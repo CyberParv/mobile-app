@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "FitTrack",
+    "slug": "fittrack",
+    "scheme": "fittrack",
+    "newArchEnabled": true,
+    "plugins": ["expo-router", "expo-secure-store"],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#0B1220"
+      }
+    }
+  }
+}
