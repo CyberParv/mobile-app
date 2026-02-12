@@ -1,287 +1,39 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = 'prisma-client-js'
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-enum Status {
-  active
-  locked
-  disabled
-  pending_verification
-}
-
-enum Gender {
-  female
-  male
-  non_binary
-  prefer_not_to_say
-}
-
-enum Unit {
-  metric
-  imperial
-}
-
-enum Weekday {
-  monday
-  sunday
-  saturday
-}
-
-enum Intensity {
-  low
-  moderate
-  high
-}
-
-enum Source {
-  manual
-  apple_health
-  google_fit
-  import
-  derived
-}
-
-enum Provider {
-  apple_health
-  google_fit
-}
-
-enum ConnectionStatus {
-  connected
-  disconnected
-  error
-  permission_denied
-}
-
-enum Platform {
-  ios
-  android
-}
-
-enum OfflineOperation {
-  workout_create
-  workout_update
-  workout_delete
-  settings_update
-  goal_update
-}
-
-enum QueueStatus {
-  pending
-  processing
-  failed
-  completed
+  provider = 'postgresql'
+  url      = env('DATABASE_URL')
 }
 
 model User {
-  id             String    @id @default(uuid())
-  email          String    @unique
-  emailVerifiedAt DateTime?
-  passwordHash   String
-  status         Status
-  lastLoginAt    DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  deletedAt      DateTime?
-
-  @@map("users")
+  id           String       @id @default(uuid())
+  email        String       @unique
+  password     String
+  name         String
+  refreshTokens RefreshToken[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 }
 
-model UserProfile {
-  id          String  @id @default(uuid())
-  userId      String  @unique
-  displayName String
-  gender      Gender?
-  birthdate   Date?
-  heightCm    Float?
-  weightKg    Float?
-  avatarUrl   String?
-  timezone    String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deletedAt   DateTime?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("user_profiles")
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  User      User     @relation(fields: [userId], references: [id])
 }
 
-model UserSettings {
-  id                       String  @id @default(uuid())
-  userId                   String  @unique
-  units                    Unit
-  weekStartsOn             Weekday
-  biometricUnlockEnabled   Boolean
-  pushNotificationsEnabled Boolean
-  dailyReminderTimeLocal   String?
-  dataSharingAnalyticsOptIn Boolean
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
-  deletedAt                DateTime?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("user_settings")
+model Entity {
+  id        String   @id @default(uuid())
+  name      String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  User      User     @relation(fields: [userId], references: [id])
 }
 
-model Goal {
-  id            String @id @default(uuid())
-  userId        String
-  type          String
-  targetValue   Float
-  effectiveFrom Date
-  effectiveTo   Date?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  deletedAt     DateTime?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("goals")
-}
-
-model WorkoutType {
-  id            String  @id @default(uuid())
-  name          String
-  systemDefined Boolean
-  userId        String?
-  metValue      Float?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  deletedAt     DateTime?
-
-  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("workout_types")
-}
-
-model Workout {
-  id                   String   @id @default(uuid())
-  userId               String
-  workoutTypeId        String
-  startedAt            DateTime
-  endedAt              DateTime?
-  durationMinutes      Int
-  intensity            Intensity
-  caloriesBurned       Float?
-  caloriesEstimated    Boolean
-  stepsDuringWorkout   Int?
-  notes                String?
-  source               Source
-  clientGeneratedId    String?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  deletedAt            DateTime?
-
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workoutType WorkoutType @relation(fields: [workoutTypeId], references: [id], onDelete: Cascade)
-
-  @@index([userId, clientGeneratedId], map: "unique_client_id")
-  @@map("workouts")
-}
-
-model DailyMetric {
-  id              String   @id @default(uuid())
-  userId          String
-  dateLocal       Date
-  steps           Int
-  activeCalories  Float
-  restingCalories Float?
-  source          Source
-  lastSyncedAt    DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  deletedAt       DateTime?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("daily_metrics")
-}
-
-model HealthConnection {
-  id            String @id @default(uuid())
-  userId        String
-  provider      Provider
-  status        ConnectionStatus
-  scopesGranted String?
-  lastSyncAt    DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  deletedAt     DateTime?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("health_connections")
-}
-
-model PushToken {
-  id            String  @id @default(uuid())
-  userId        String
-  platform      Platform
-  expoPushToken String  @unique
-  deviceId      String
-  enabled       Boolean
-  lastSeenAt    DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  deletedAt     DateTime?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("push_tokens")
-}
-
-model AuthSession {
-  id              String @id @default(uuid())
-  userId          String
-  refreshTokenHash String
-  deviceId        String
-  userAgent       String?
-  ipAddress       String?
-  revokedAt       DateTime?
-  expiresAt       DateTime
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  deletedAt       DateTime?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("auth_sessions")
-}
-
-model AuditLog {
-  id           String @id @default(uuid())
-  userId       String?
-  action       String
-  entityType   String?
-  entityId     String?
-  metadataJson String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now())
-
-  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("audit_logs")
-}
-
-model OfflineMutationQueueItem {
-  id             String    @id @default(uuid())
-  userId         String
-  operation      OfflineOperation
-  payloadJson    String
-  status         QueueStatus
-  retryCount     Int
-  lastErrorCode  String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("offline_mutation_queue_items")
-}
+@@index([userId])

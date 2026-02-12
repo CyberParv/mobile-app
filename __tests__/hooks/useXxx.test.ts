@@ -1,43 +1,43 @@
-import { renderHook } from '@testing-library/react-hooks';
-import { mockApi } from '../utils/test-utils';
+import { renderHook, act } from '@testing-library/react-hooks';
 import useXxx from '@/hooks/useXxx';
+import { mockApi } from '../utils/test-utils';
 
-describe('useXxx Hook', () => {
+describe('useXxx', () => {
   it('returns loading=true initially', () => {
     const { result } = renderHook(() => useXxx());
     expect(result.current.loading).toBe(true);
   });
 
   it('returns data on successful fetch', async () => {
-    const mockData = { id: 1, name: 'Item 1' };
-    mockApi.mockResolvedValueOnce(mockData);
+    mockApi({ data: { id: 1, name: 'Data' } });
     const { result, waitForNextUpdate } = renderHook(() => useXxx());
     await waitForNextUpdate();
-    expect(result.current.data).toEqual(mockData);
+    expect(result.current.data).toEqual({ id: 1, name: 'Data' });
   });
 
   it('returns error on failed fetch', async () => {
-    mockApi.mockRejectedValueOnce(new Error('Failed Fetch'));
+    mockApi(Promise.reject(new Error('Fetch error')));
     const { result, waitForNextUpdate } = renderHook(() => useXxx());
     await waitForNextUpdate();
-    expect(result.current.error).toBe('Failed Fetch');
+    expect(result.current.error).toEqual('Fetch error');
   });
 
   it('refetch works after error', async () => {
-    mockApi.mockRejectedValueOnce(new Error('Failed Fetch'));
+    mockApi(Promise.reject(new Error('Fetch error')));
     const { result, waitForNextUpdate } = renderHook(() => useXxx());
     await waitForNextUpdate();
-    mockApi.mockResolvedValueOnce({ id: 1, name: 'Recovered' });
-    result.current.refetch();
+    mockApi({ data: { id: 1, name: 'Data' } });
+    act(() => {
+      result.current.refetch();
+    });
     await waitForNextUpdate();
-    expect(result.current.data).toEqual({ id: 1, name: 'Recovered' });
+    expect(result.current.data).toEqual({ id: 1, name: 'Data' });
   });
 
   it('handles empty response', async () => {
-    mockApi.mockResolvedValueOnce([]);
+    mockApi({ data: null });
     const { result, waitForNextUpdate } = renderHook(() => useXxx());
     await waitForNextUpdate();
-    expect(result.current.data).toEqual([]);
-    expect(result.current.noData).toBe(true);
+    expect(result.current.data).toBeNull();
   });
 });

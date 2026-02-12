@@ -1,25 +1,27 @@
 import React, { ReactNode } from "react";
-import { View, Text } from "react-native";
-import Button from "./Button";
+import { Text, View } from "react-native";
+import { Button } from "@/components/ui/Button";
 
-interface EmptyStateProps {
+export type EmptyStateProps = {
   icon?: ReactNode;
   title: string;
   description?: string;
   actionLabel?: string;
   onAction?: () => void;
-}
+};
 
-export default function EmptyState({ icon, title, description, actionLabel, onAction }: EmptyStateProps) {
+export function EmptyState({ icon, title, description, actionLabel, onAction }: EmptyStateProps) {
   return (
-    <View className="items-center justify-center px-6 py-8">
+    <View className="items-center justify-center px-6 py-10">
       {icon ? <View className="mb-4">{icon}</View> : null}
-      <Text className="text-xl font-semibold text-text mb-2 text-center">{title}</Text>
-      {description ? <Text className="text-text/70 text-center mb-4">{description}</Text> : null}
+      <Text className="text-text text-lg font-semibold text-center">{title}</Text>
+      {description ? <Text className="text-text-muted mt-2 text-center">{description}</Text> : null}
       {actionLabel && onAction ? (
-        <Button variant="primary" size="md" onPress={onAction}>
-          {actionLabel}
-        </Button>
+        <View className="mt-6 w-full">
+          <Button onPress={onAction} variant="primary">
+            {actionLabel}
+          </Button>
+        </View>
       ) : null}
     </View>
   );

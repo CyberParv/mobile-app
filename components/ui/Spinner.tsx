@@ -1,15 +1,24 @@
 import React from "react";
-import { ActivityIndicator } from "react-native";
-import colors from "@/constants/colors";
+import { ActivityIndicator, View } from "react-native";
 
 type SpinnerSize = "sm" | "md" | "lg";
 
-const sizes: Record<SpinnerSize, number> = {
-  sm: 16,
-  md: 24,
-  lg: 32
+export type SpinnerProps = {
+  size?: SpinnerSize;
+  color?: string;
+  className?: string;
 };
 
-export default function Spinner({ size = "md", color = colors.primary }: { size?: SpinnerSize; color?: string }) {
-  return <ActivityIndicator size={sizes[size]} color={color} />;
+const sizeMap: Record<SpinnerSize, number> = {
+  sm: 16,
+  md: 22,
+  lg: 30,
+};
+
+export function Spinner({ size = "md", color = "#3B82F6", className }: SpinnerProps) {
+  return (
+    <View className={className}>
+      <ActivityIndicator size={sizeMap[size]} color={color} />
+    </View>
+  );
 }

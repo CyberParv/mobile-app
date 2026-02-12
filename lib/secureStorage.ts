@@ -1,25 +1,54 @@
 import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
 
-export async function getSecureItem(key: string) {
+type SecureKey = string;
+
+const webPrefix = "secure:";
+
+export async function getSecureItem(key: SecureKey): Promise<string | null> {
   if (Platform.OS === "web") {
-    return Promise.resolve(localStorage.getItem(key));
+    try {
+      return window.localStorage.getItem(`${webPrefix}${key}`);
+    } catch {
+      return null;
+    }
   }
-  return SecureStore.getItemAsync(key);
+
+  try {
+    return await SecureStore.getItemAsync(key);
+  } catch {
+    return null;
+  }
 }
 
-export async function setSecureItem(key: string, value: string) {
+export async function setSecureItem(key: SecureKey, value: string): Promise<void> {
   if (Platform.OS === "web") {
-    localStorage.setItem(key, value);
+    try {
+      window.localStorage.setItem(`${webPrefix}${key}`, value);
+    } catch {
+      // ignore
+    }
     return;
   }
-  await SecureStore.setItemAsync(key, value, { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY });
+
+  await SecureStore.setItemAsync(key, value, {
+    keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
+  });
 }
 
-export async function removeSecureItem(key: string) {
+export async function removeSecureItem(key: SecureKey): Promise<void> {
   if (Platform.OS === "web") {
-    localStorage.removeItem(key);
+    try {
+      window.localStorage.removeItem(`${webPrefix}${key}`);
+    } catch {
+      // ignore
+    }
     return;
   }
-  await SecureStore.deleteItemAsync(key);
+
+  try {
+    await SecureStore.deleteItemAsync(key);
+  } catch {
+    // ignore
+  }
 }

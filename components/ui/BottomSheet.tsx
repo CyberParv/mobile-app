@@ -1,68 +1,111 @@
-import React, { ReactNode, useEffect } from "react";
-import { Dimensions, Modal, Pressable, View } from "react-native";
-import { PanGestureHandler } from "react-native-gesture-handler";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, runOnJS } from "react-native-reanimated";
-import colors from "@/constants/colors";
+import React, { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Animated,
+  Dimensions,
+  Modal,
+  PanResponder,
+  Pressable,
+  StyleSheet,
+  View,
+} from "react-native";
+import { cn } from "@/lib/utils";
 
-interface BottomSheetProps {
-  isOpen: boolean;
+export type BottomSheetProps = {
+  visible: boolean;
   onClose: () => void;
-  snapPoints?: number[];
   children: ReactNode;
-}
+  title?: ReactNode;
+  height?: number;
+  className?: string;
+};
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+export function BottomSheet({ visible, onClose, children, title, height, className }: BottomSheetProps) {
+  const screenH = Dimensions.get("window").height;
+  const sheetHeight = Math.min(height ?? Math.round(screenH * 0.55), Math.round(screenH * 0.9));
 
-export default function BottomSheet({ isOpen, onClose, snapPoints = [0.6], children }: BottomSheetProps) {
-  const translateY = useSharedValue(SCREEN_HEIGHT);
-  const maxHeight = Math.max(...snapPoints) * SCREEN_HEIGHT;
+  const translateY = useRef(new Animated.Value(sheetHeight)).current;
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const [mounted, setMounted] = useState(visible);
 
   useEffect(() => {
-    translateY.value = withSpring(isOpen ? SCREEN_HEIGHT - maxHeight : SCREEN_HEIGHT, { damping: 18 });
-  }, [isOpen, maxHeight, translateY]);
+    if (visible) {
+      setMounted(true);
+      Animated.parallel([
+        Animated.timing(translateY, { toValue: 0, duration: 220, useNativeDriver: true }),
+        Animated.timing(backdropOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+      ]).start();
+    } else if (mounted) {
+      Animated.parallel([
+        Animated.timing(translateY, { toValue: sheetHeight, duration: 200, useNativeDriver: true }),
+        Animated.timing(backdropOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+      ]).start(({ finished }) => {
+        if (finished) setMounted(false);
+      });
+    }
+  }, [visible, mounted, sheetHeight, translateY, backdropOpacity]);
 
-  const style = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }]
-  }));
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 6,
+        onPanResponderMove: (_, g) => {
+          if (g.dy > 0) translateY.setValue(g.dy);
+        },
+        onPanResponderRelease: (_, g) => {
+          const shouldClose = g.dy > 80 || g.vy > 1.2;
+          if (shouldClose) {
+            onClose();
+          } else {
+            Animated.spring(translateY, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start();
+          }
+        },
+      }),
+    [onClose, translateY]
+  );
+
+  if (!mounted) return null;
 
   return (
-    <Modal transparent visible={isOpen} animationType="fade" onRequestClose={onClose}>
-      <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)" }} />
-      <PanGestureHandler
-        onGestureEvent={(event) => {
-          translateY.value = Math.max(SCREEN_HEIGHT - maxHeight, translateY.value + event.nativeEvent.translationY);
-        }}
-        onEnded={(event) => {
-          const shouldClose = event.nativeEvent.translationY > 80;
-          if (shouldClose) {
-            translateY.value = withSpring(SCREEN_HEIGHT, { damping: 18 }, () => runOnJS(onClose)());
-          } else {
-            translateY.value = withSpring(SCREEN_HEIGHT - maxHeight, { damping: 18 });
-          }
-        }}
-      >
+    <Modal visible transparent animationType="none" onRequestClose={onClose}>
+      <View style={StyleSheet.absoluteFill}>
+        <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        </Animated.View>
+
         <Animated.View
           style={[
+            styles.sheet,
             {
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: maxHeight,
-              backgroundColor: colors.surface,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              padding: 16
+              height: sheetHeight,
+              transform: [{ translateY }],
             },
-            style
           ]}
+          className={cn("bg-bg-card border border-border rounded-t-2xl", className)}
+          {...panResponder.panHandlers}
         >
-          <View className="items-center mb-3">
-            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.muted }} />
+          <View className="items-center pt-3 pb-2">
+            <View className="h-1.5 w-12 rounded-full bg-border" />
           </View>
-          {children}
+
+          {title ? <View className="px-4 pb-2">{title}</View> : null}
+
+          <View className="flex-1 px-4 pb-4">{children}</View>
         </Animated.View>
-      </PanGestureHandler>
+      </View>
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  sheet: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: "hidden",
+  },
+});

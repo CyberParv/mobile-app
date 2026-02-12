@@ -1,23 +1,47 @@
-const colors = {
-  primary: "#2563EB",
-  secondary: "#0F766E",
-  accent: "#F97316",
-  background: "#0B1220",
-  surface: "#111B2E",
-  text: "#E5E7EB",
-  muted: "#9CA3AF",
-  border: "#1F2937",
-  error: "#EF4444",
-  success: "#22C55E",
-  warning: "#F59E0B",
-  light: {
-    background: "#F8FAFC",
-    surface: "#FFFFFF",
-    text: "#111827",
-    muted: "#6B7280",
-    border: "#E5E7EB"
-  }
-};
+export const colors = {
+  bg: {
+    default: "#0B1220",
+    subtle: "#0F172A",
+    card: "#111B2E",
+  },
+  text: {
+    default: "#E5E7EB",
+    muted: "#9CA3AF",
+    subtle: "#CBD5E1",
+  },
+  border: {
+    default: "#22304A",
+    subtle: "#1F2A44",
+  },
+  primary: {
+    50: "#EFF6FF",
+    100: "#DBEAFE",
+    200: "#BFDBFE",
+    300: "#93C5FD",
+    400: "#60A5FA",
+    500: "#3B82F6",
+    600: "#2563EB",
+    700: "#1D4ED8",
+    800: "#1E40AF",
+    900: "#1E3A8A",
+    default: "#3B82F6",
+  },
+  success: {
+    default: "#22C55E",
+    subtle: "#DCFCE7",
+  },
+  warning: {
+    default: "#F59E0B",
+    subtle: "#FEF3C7",
+  },
+  danger: {
+    default: "#EF4444",
+    subtle: "#FEE2E2",
+  },
+  info: {
+    default: "#06B6D4",
+    subtle: "#CFFAFE",
+  },
+} as const;
 
-export default colors;
-module.exports = colors;
+export type AppColors = typeof colors;

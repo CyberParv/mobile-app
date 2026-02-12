@@ -1,33 +1,33 @@
 import React from "react";
-import { View } from "react-native";
-import ErrorView from "./ui/ErrorView";
+import { ErrorView } from "@/components/ui/ErrorView";
 
-interface ErrorBoundaryState {
-  hasError: boolean;
-}
+type Props = {
+  children: React.ReactNode;
+};
 
-export default class ErrorBoundary extends React.Component<React.PropsWithChildren, ErrorBoundaryState> {
-  state: ErrorBoundaryState = { hasError: false };
+type State = {
+  error: Error | null;
+};
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+export class ErrorBoundary extends React.Component<Props, State> {
+  state: State = { error: null };
+
+  static getDerivedStateFromError(error: Error): State {
+    return { error };
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error("App Error Boundary", error, info);
+    // In production, wire this to Sentry/Bugsnag.
+    console.error("ErrorBoundary caught error:", error, info);
   }
 
-  handleRetry = () => {
-    this.setState({ hasError: false });
+  retry = () => {
+    this.setState({ error: null });
   };
 
   render() {
-    if (this.state.hasError) {
-      return (
-        <View className="flex-1 bg-background">
-          <ErrorView message="Something went wrong. Please try again." onRetry={this.handleRetry} />
-        </View>
-      );
+    if (this.state.error) {
+      return <ErrorView message={this.state.error.message} onRetry={this.retry} />;
     }
 
     return this.props.children;

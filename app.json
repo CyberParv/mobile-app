@@ -1,18 +1,23 @@
 {
   "expo": {
-    "name": "FitTrack",
-    "slug": "fittrack",
-    "scheme": "fittrack",
+    "name": "Expo Production Scaffold",
+    "slug": "expo-production-scaffold",
+    "scheme": "exposcaffold",
     "newArchEnabled": true,
-    "plugins": ["expo-router", "expo-secure-store"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#0B1220"
       }
+    },
+    "web": {
+      "bundler": "metro"
     }
   }
 }

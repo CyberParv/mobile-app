@@ -1,23 +1,50 @@
 import React from "react";
-import { View, Text } from "react-native";
-import Card from "@/components/ui/Card";
-import Button from "@/components/ui/Button";
+import { ScrollView, Text, View } from "react-native";
+
+import { Avatar, Button, Card, SkeletonLoader } from "@/components/ui";
+import { useAuth } from "@/providers/AuthProvider";
+import { useTheme } from "@/providers/ThemeProvider";
 
 export default function HomeScreen() {
+  const { user, logout } = useAuth();
+  const { toggleTheme, theme } = useTheme();
+
   return (
-    <View className="flex-1 bg-background px-6 py-8">
-      <Text className="text-3xl font-bold text-text mb-4">Today</Text>
-      <Card className="mb-4">
-        <Text className="text-text text-lg font-semibold">Steps</Text>
-        <Text className="text-text/70 mt-2">0 steps • Sync to see data</Text>
+    <ScrollView className="flex-1 bg-bg" contentContainerClassName="px-5 pt-6 pb-10">
+      <View className="flex-row items-center justify-between">
+        <View className="flex-row items-center gap-3">
+          <Avatar name={user?.name ?? user?.email ?? "User"} uri={user?.avatarUrl ?? null} size="lg" />
+          <View>
+            <Text className="text-text text-lg font-semibold">{user?.name ?? "Welcome"}</Text>
+            <Text className="text-text-muted">{user?.email ?? ""}</Text>
+          </View>
+        </View>
+
+        <Button variant="outline" size="sm" onPress={toggleTheme}>
+          {theme === "dark" ? "Light" : "Dark"}
+        </Button>
+      </View>
+
+      <Card className="mt-6">
+        <Text className="text-text text-base font-semibold">Dashboard</Text>
+        <Text className="text-text-muted mt-2">
+          This is a production-ready scaffold: auth, token refresh, theming, toasts, and UI primitives.
+        </Text>
+
+        <View className="mt-4 gap-3">
+          <View className="flex-row gap-3">
+            <SkeletonLoader className="h-16 flex-1" rounded="lg" />
+            <SkeletonLoader className="h-16 flex-1" rounded="lg" />
+          </View>
+          <SkeletonLoader className="h-24 w-full" rounded="lg" />
+        </View>
       </Card>
-      <Card className="mb-4">
-        <Text className="text-text text-lg font-semibold">Active Calories</Text>
-        <Text className="text-text/70 mt-2">0 kcal • Sync to see data</Text>
-      </Card>
-      <Button variant="primary" size="lg" onPress={() => {}}>
-        Log Workout
-      </Button>
-    </View>
+
+      <View className="mt-6">
+        <Button variant="destructive" onPress={logout}>
+          Sign out
+        </Button>
+      </View>
+    </ScrollView>
   );
 }

@@ -1,135 +1,155 @@
-import React, { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import api, { setOnAuthFailure } from "@/lib/api";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { AxiosError } from "axios";
+import api from "@/lib/api";
 import { getSecureItem, removeSecureItem, setSecureItem } from "@/lib/secureStorage";
-import { get, set } from "@/lib/storage";
 
-interface AuthState {
-  user: any | null;
+export type User = {
+  id: string;
+  name?: string;
+  email: string;
+  avatarUrl?: string | null;
+};
+
+type AuthResponse = {
+  data: {
+    user: User;
+    tokens: {
+      accessToken: string;
+      refreshToken: string;
+    };
+  };
+};
+
+type AuthContextValue = {
+  user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (payload: Record<string, any>) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
+  signup: (email: string, password: string, name: string) => Promise<User>;
   logout: () => Promise<void>;
+};
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+function getApiMessage(err: unknown, fallback = "Something went wrong") {
+  const e = err as AxiosError<any>;
+  const msg = e?.response?.data?.message;
+  if (typeof msg === "string" && msg.trim()) return msg;
+  return fallback;
 }
 
-const AuthContext = createContext<AuthState | undefined>(undefined);
-
-const ACCESS_TOKEN_KEY = "accessToken";
-const ACCESS_EXP_KEY = "accessTokenExpiresAt";
-const REFRESH_TOKEN_KEY = "refreshToken";
-const DEVICE_ID_KEY = "deviceId";
-
-async function getDeviceId() {
-  const existing = await get<string>(DEVICE_ID_KEY);
-  if (existing) return existing;
-  const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  await set(DEVICE_ID_KEY, id);
-  return id;
-}
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<any | null>(null);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const hydrate = useCallback(async () => {
-    try {
-      const accessToken = await getSecureItem(ACCESS_TOKEN_KEY);
-      const accessExp = await getSecureItem(ACCESS_EXP_KEY);
-      const refreshToken = await getSecureItem(REFRESH_TOKEN_KEY);
-      if (!refreshToken) {
-        setUser(null);
-        return;
-      }
+  const isAuthenticated = !!user;
 
-      const now = Date.now();
-      const exp = accessExp ? Number(accessExp) : 0;
-
-      if (!accessToken || exp < now) {
-        await refreshSession();
-      }
-
-      const me = await api.get("/me");
-      setUser(me.data.user ?? null);
-    } catch (error) {
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
+  const storeTokens = useCallback(async (accessToken: string, refreshToken: string) => {
+    await setSecureItem("accessToken", accessToken);
+    await setSecureItem("refreshToken", refreshToken);
   }, []);
 
-  const refreshSession = useCallback(async () => {
-    const refreshToken = await getSecureItem(REFRESH_TOKEN_KEY);
-    if (!refreshToken) throw new Error("No refresh token");
-    const deviceId = await getDeviceId();
-    const response = await api.post("/auth/refresh", { refreshToken, deviceId });
-    const tokens = response.data.tokens;
-    await setSecureItem(ACCESS_TOKEN_KEY, tokens.accessToken);
-    await setSecureItem(ACCESS_EXP_KEY, String(Date.now() + tokens.accessTokenExpiresInSec * 1000));
-    await setSecureItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+  const clearTokens = useCallback(async () => {
+    await removeSecureItem("accessToken");
+    await removeSecureItem("refreshToken");
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      const deviceId = await getDeviceId();
-      const response = await api.post("/auth/login", { email, password, deviceId });
-      const tokens = response.data.tokens;
-      await setSecureItem(ACCESS_TOKEN_KEY, tokens.accessToken);
-      await setSecureItem(ACCESS_EXP_KEY, String(Date.now() + tokens.accessTokenExpiresInSec * 1000));
-      await setSecureItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
-      setUser(response.data.user ?? null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const refreshAndFetchMe = useCallback(async (): Promise<User | null> => {
+    const refreshToken = await getSecureItem("refreshToken");
+    if (!refreshToken) return null;
 
-  const signup = useCallback(async (payload: Record<string, any>) => {
-    setIsLoading(true);
     try {
-      const response = await api.post("/auth/register", payload);
-      const tokens = response.data.tokens;
-      await setSecureItem(ACCESS_TOKEN_KEY, tokens.accessToken);
-      await setSecureItem(ACCESS_EXP_KEY, String(Date.now() + tokens.accessTokenExpiresInSec * 1000));
-      await setSecureItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
-      setUser(response.data.user ?? null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+      const refreshRes = await api.post<any, { data: { tokens: { accessToken: string; refreshToken: string } } }>(
+        "/auth/refresh",
+        { refreshToken }
+      );
+      const tokens = refreshRes.data.tokens;
+      await storeTokens(tokens.accessToken, tokens.refreshToken);
 
-  const logout = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const deviceId = await getDeviceId();
-      await api.post("/auth/logout", { deviceId });
+      const meRes = await api.get<any, { data: { user: User } }>("/auth/me");
+      return meRes.data.user;
     } catch {
-      // Ignore network errors on logout
-    } finally {
-      await removeSecureItem(ACCESS_TOKEN_KEY);
-      await removeSecureItem(ACCESS_EXP_KEY);
-      await removeSecureItem(REFRESH_TOKEN_KEY);
-      setUser(null);
-      setIsLoading(false);
+      await clearTokens();
+      return null;
     }
-  }, []);
+  }, [clearTokens, storeTokens]);
 
   useEffect(() => {
-    setOnAuthFailure(async () => {
-      await logout();
-    });
-    hydrate();
-  }, [hydrate, logout]);
+    (async () => {
+      setIsLoading(true);
+      try {
+        const accessToken = await getSecureItem("accessToken");
+        if (!accessToken) {
+          setUser(null);
+          return;
+        }
 
-  const value = useMemo(
-    () => ({
-      user,
-      isAuthenticated: !!user,
-      isLoading,
-      login,
-      logout,
-      signup
-    }),
-    [user, isLoading, login, logout, signup]
+        try {
+          const meRes = await api.get<any, { data: { user: User } }>("/auth/me");
+          setUser(meRes.data.user);
+        } catch (err) {
+          const e = err as AxiosError<any>;
+          const status = e.response?.status;
+          const code = e.response?.data?.code;
+
+          if (status === 401 && code === "AUTH_TOKEN_EXPIRED") {
+            const refreshedUser = await refreshAndFetchMe();
+            setUser(refreshedUser);
+          } else {
+            await clearTokens();
+            setUser(null);
+          }
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, [clearTokens, refreshAndFetchMe]);
+
+  const login = useCallback(
+    async (email: string, password: string) => {
+      try {
+        const res = await api.post<any, AuthResponse>("/auth/login", { email, password });
+        const { user: nextUser, tokens } = res.data;
+        await storeTokens(tokens.accessToken, tokens.refreshToken);
+        setUser(nextUser);
+        return nextUser;
+      } catch (err) {
+        throw new Error(getApiMessage(err, "Invalid credentials"));
+      }
+    },
+    [storeTokens]
+  );
+
+  const signup = useCallback(
+    async (email: string, password: string, name: string) => {
+      try {
+        const res = await api.post<any, AuthResponse>("/auth/signup", { email, password, name });
+        const { user: nextUser, tokens } = res.data;
+        await storeTokens(tokens.accessToken, tokens.refreshToken);
+        setUser(nextUser);
+        return nextUser;
+      } catch (err) {
+        throw new Error(getApiMessage(err, "Unable to create account"));
+      }
+    },
+    [storeTokens]
+  );
+
+  const logout = useCallback(async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // ignore network errors; still clear local state
+    } finally {
+      await clearTokens();
+      setUser(null);
+    }
+  }, [clearTokens]);
+
+  const value = useMemo<AuthContextValue>(
+    () => ({ user, isAuthenticated, isLoading, login, signup, logout }),
+    [user, isAuthenticated, isLoading, login, signup, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

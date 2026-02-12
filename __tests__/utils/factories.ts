@@ -1,6 +1,25 @@
-let userId = 1;
-let workoutId = 1;
+export function createUser(overrides = {}) {
+  return {
+    id: 1,
+    name: 'Jane Doe',
+    email: 'jane.doe@example.com',
+    ...overrides
+  };
+}
 
-export const createUser = () => ({ id: ++userId, name: `User ${userId}`, email: `user${userId}@example.com` });
-export const createWorkout = () => ({ id: ++workoutId, title: `Workout ${workoutId}`, duration: 60 });
-export const createEntity = () => ({ id: ++userId, name: `Entity ${userId}` });
+export function createWorkout(overrides = {}) {
+  return {
+    id: 1,
+    title: 'Morning Run',
+    duration: 30,
+    ...overrides
+  };
+}
+
+export function createEntity(overrides = {}) {
+  return {
+    id: 1,
+    name: 'Entity Name',
+    ...overrides
+  };
+}

@@ -1,83 +1,97 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
-import Constants from "expo-constants";
-import { getSecureItem, setSecureItem, removeSecureItem } from "@/lib/secureStorage";
-import { get } from "@/lib/storage";
+import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "axios";
+import { getSecureItem, removeSecureItem, setSecureItem } from "@/lib/secureStorage";
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || Constants.expoConfig?.extra?.apiUrl || "";
-const baseUrl = `${BASE_URL.replace(/\/$/, "")}/v1`;
+type ApiErrorShape = {
+  message?: string;
+  code?: string;
+};
 
-let onAuthFailure: (() => void) | null = null;
-let refreshPromise: Promise<void> | null = null;
+type RefreshResponse = {
+  data: {
+    tokens: {
+      accessToken: string;
+      refreshToken: string;
+    };
+  };
+};
 
-export function setOnAuthFailure(fn: () => void) {
-  onAuthFailure = fn;
-}
+const baseURL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 
-async function getDeviceId() {
-  return get<string>("deviceId");
-}
-
-export const api = axios.create({
-  baseURL: baseUrl,
-  timeout: 15000
+export const api: AxiosInstance = axios.create({
+  baseURL,
+  timeout: 15000,
+  headers: {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  },
 });
 
+function isAuthExcluded(url?: string) {
+  if (!url) return false;
+  return url.includes("/auth/login") || url.includes("/auth/signup") || url.includes("/auth/refresh");
+}
+
 api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
-  const token = await getSecureItem("accessToken");
-  const deviceId = await getDeviceId();
-  config.headers.Authorization = token ? `Bearer ${token}` : undefined;
-  config.headers["X-Device-Id"] = deviceId ?? "";
-  config.headers["Accept"] = "application/json";
+  if (!isAuthExcluded(config.url)) {
+    const token = await getSecureItem("accessToken");
+    if (token) {
+      config.headers = config.headers ?? {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
   return config;
 });
 
+let refreshPromise: Promise<{ accessToken: string; refreshToken: string } | null> | null = null;
+
+async function refreshTokens(): Promise<{ accessToken: string; refreshToken: string } | null> {
+  const refreshToken = await getSecureItem("refreshToken");
+  if (!refreshToken) return null;
+
+  try {
+    const res = await api.post<any, RefreshResponse>("/auth/refresh", { refreshToken });
+    const { accessToken, refreshToken: newRefreshToken } = res.data.tokens;
+    await setSecureItem("accessToken", accessToken);
+    await setSecureItem("refreshToken", newRefreshToken);
+    return { accessToken, refreshToken: newRefreshToken };
+  } catch {
+    await removeSecureItem("accessToken");
+    await removeSecureItem("refreshToken");
+    return null;
+  }
+}
+
 api.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError) => {
-    const originalRequest: any = error.config;
+  async (error: AxiosError<any>) => {
+    const status = error.response?.status;
+    const data: ApiErrorShape | undefined = error.response?.data;
 
-    if (!error.response) {
-      if (!originalRequest.__retry) {
-        originalRequest.__retry = true;
-        return api(originalRequest);
-      }
-      return Promise.reject(error);
-    }
+    const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
 
-    if (error.response.status === 401 && !originalRequest.__isRetryRequest) {
+    if (!originalRequest) throw error;
+
+    if (status === 401 && data?.code === "AUTH_TOKEN_EXPIRED" && !originalRequest._retry) {
+      originalRequest._retry = true;
+
       if (!refreshPromise) {
-        refreshPromise = refreshToken().finally(() => {
+        refreshPromise = refreshTokens().finally(() => {
           refreshPromise = null;
         });
       }
 
-      try {
-        await refreshPromise;
-        originalRequest.__isRetryRequest = true;
-        return api(originalRequest);
-      } catch (refreshError) {
-        await removeSecureItem("accessToken");
-        await removeSecureItem("accessTokenExpiresAt");
-        await removeSecureItem("refreshToken");
-        onAuthFailure?.();
-        return Promise.reject(refreshError);
+      const tokens = await refreshPromise;
+      if (!tokens?.accessToken) {
+        throw error;
       }
+
+      originalRequest.headers = originalRequest.headers ?? {};
+      originalRequest.headers.Authorization = `Bearer ${tokens.accessToken}`;
+      return api.request(originalRequest);
     }
 
-    return Promise.reject(error);
+    throw error;
   }
 );
-
-async function refreshToken() {
-  const refreshToken = await getSecureItem("refreshToken");
-  const deviceId = await getDeviceId();
-  if (!refreshToken || !deviceId) throw new Error("Missing refresh token");
-
-  const response = await axios.post(`${baseUrl}/auth/refresh`, { refreshToken, deviceId });
-  const tokens = response.data.tokens;
-  await setSecureItem("accessToken", tokens.accessToken);
-  await setSecureItem("accessTokenExpiresAt", String(Date.now() + tokens.accessTokenExpiresInSec * 1000));
-  await setSecureItem("refreshToken", tokens.refreshToken);
-}
 
 export default api;

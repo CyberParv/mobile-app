@@ -1,27 +1,12 @@
-import { NextFunction, Request, Response } from 'express';
-import { Prisma } from '@prisma/client';
+import { Request, Response, NextFunction } from 'express';
 
-export const errorHandler = (
-  err: any,
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  if (err instanceof Prisma.PrismaClientKnownRequestError) {
-    if (err.code === 'P2002') {
-      return res.status(409).json({
-        success: false,
-        error: { code: 'CONFLICT', message: 'Unique constraint failed' },
-      });
-    }
+export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
+  const statusCode = err.statusCode || 500;
+  const errorResponse = { success: false, error: { code: err.code || 'INTERNAL_SERVER_ERROR', message: err.message || 'An unexpected error occurred' } };
+
+  if (process.env.NODE_ENV === 'development') {
+    console.error(err);
   }
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.error(err.stack);
-  }
-
-  res.status(500).json({
-    success: false,
-    error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' },
-  });
+  res.status(statusCode).json(errorResponse);
 };

@@ -1,38 +1,35 @@
 import React from "react";
 import { Tabs } from "expo-router";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import colors from "@/constants/colors";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.muted,
-        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border }
+        headerStyle: { backgroundColor: "#0B1220" },
+        headerTitleStyle: { color: "#E5E7EB" },
+        tabBarStyle: {
+          backgroundColor: "#0B1220",
+          borderTopColor: "#22304A",
+        },
+        tabBarActiveTintColor: "#3B82F6",
+        tabBarInactiveTintColor: "#9CA3AF",
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />
+          tabBarIcon: ({ color, size }) => <Ionicons name="home" color={color} size={size} />,
+          tabBarBadge: undefined,
         }}
       />
       <Tabs.Screen
-        name="workouts"
+        name="settings"
         options={{
-          title: "Workouts",
-          tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="dumbbell" size={size} color={color} />,
-          tabBarBadge: undefined
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Profile",
-          tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />
+          title: "Settings",
+          tabBarIcon: ({ color, size }) => <Ionicons name="settings" color={color} size={size} />,
+          tabBarBadge: undefined,
         }}
       />
     </Tabs>

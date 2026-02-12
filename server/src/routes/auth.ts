@@ -1,79 +1,79 @@
 import { Router } from 'express';
-import { body } from 'express-validator';
-import { validate } from '../middleware/validate';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
+import { generateAccessToken, generateRefreshToken } from '../utils/jwt';
+import { validate } from '../middleware/validate';
+import { authLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
-router.post(
-  '/signup',
-  validate([
-    body('email').isEmail().withMessage('Must be a valid email').isLength({ max: 254 }),
-    body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters long'),
-  ]),
-  async (req, res) => {
-    const { email, password, displayName, timezone, units, weekStartsOn } = req.body;
+router.post('/signup', authLimiter, validate({
+  email: 'required|email',
+  password: 'required|min:8',
+  name: 'required|min:2|max:100'
+}), async (req, res) => {
+  const { email, password, name } = req.body;
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+  if (existingUser) return res.status(409).json({ success: false, error: { code: 'EMAIL_TAKEN', message: 'Email already taken' } });
 
-    if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        error: { code: 'EMAIL_ALREADY_EXISTS', message: 'Email already registered' },
-      });
-    }
+  const hashedPassword = await bcrypt.hash(password, 12);
+  const user = await prisma.user.create({ data: { email, password: hashedPassword, name } });
 
-    const passwordHash = await bcrypt.hash(password, 12);
+  const accessToken = generateAccessToken(user.id);
+  const refreshToken = generateRefreshToken(user.id);
 
-    const user = await prisma.user.create({
-      data: {
-        email,
-        passwordHash,
-        status: 'pending_verification',
-      },
-    });
+  await prisma.refreshToken.create({ data: { token: refreshToken, userId: user.id } });
 
-    await prisma.userProfile.create({
-      data: {
-        userId: user.id,
-        displayName,
-        timezone,
-      },
-    });
+  res.status(201).json({ success: true, data: { user: { id: user.id, email: user.email, name: user.name }, tokens: { accessToken, refreshToken, expiresIn: 900 } } });
+});
 
-    await prisma.userSettings.create({
-      data: {
-        userId: user.id,
-        units,
-        weekStartsOn,
-        biometricUnlockEnabled: false,
-        pushNotificationsEnabled: false,
-        dataSharingAnalyticsOptIn: false,
-      },
-    });
+router.post('/login', authLimiter, validate({
+  email: 'required|email',
+  password: 'required|min:8'
+}), async (req, res) => {
+  const { email, password } = req.body;
 
-    const accessToken = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '15m' });
-    const refreshToken = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) return res.status(401).json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Invalid credentials' } });
 
-    res.status(201).json({
-      success: true,
-      data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          createdAt: user.createdAt,
-        },
-        tokens: {
-          accessToken,
-          accessTokenExpiresInSec: 900,
-          refreshToken,
-          refreshTokenExpiresInSec: 604800,
-        },
-      },
-    });
-  }
-);
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!isPasswordValid) return res.status(401).json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Invalid credentials' } });
+
+  const accessToken = generateAccessToken(user.id);
+  const refreshToken = generateRefreshToken(user.id);
+
+  await prisma.refreshToken.create({ data: { token: refreshToken, userId: user.id } });
+
+  res.json({ success: true, data: { user: { id: user.id, email: user.email, name: user.name }, tokens: { accessToken, refreshToken, expiresIn: 900 } } });
+});
+
+router.post('/refresh', validate({
+  refreshToken: 'required'
+}), async (req, res) => {
+  const { refreshToken } = req.body;
+
+  const storedToken = await prisma.refreshToken.findUnique({ where: { token: refreshToken } });
+  if (!storedToken || storedToken.revokedAt) return res.status(401).json({ success: false, error: { code: 'INVALID_TOKEN', message: 'Invalid refresh token' } });
+
+  const newAccessToken = generateAccessToken(storedToken.userId);
+  const newRefreshToken = generateRefreshToken(storedToken.userId);
+
+  await prisma.refreshToken.update({ where: { token: refreshToken }, data: { revokedAt: new Date() } });
+  await prisma.refreshToken.create({ data: { token: newRefreshToken, userId: storedToken.userId } });
+
+  res.json({ success: true, data: { tokens: { accessToken: newAccessToken, refreshToken: newRefreshToken, expiresIn: 900 } } });
+});
+
+router.post('/logout', async (req, res) => {
+  const userId = req.user.id;
+  await prisma.refreshToken.updateMany({ where: { userId }, data: { revokedAt: new Date() } });
+  res.json({ success: true });
+});
+
+router.get('/me', async (req, res) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { id: true, email: true, name: true } });
+  res.json({ success: true, data: user });
+});
 
 export default router;

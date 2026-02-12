@@ -1,50 +1,58 @@
-import React, { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { Appearance, View } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { cn } from "@/lib/utils";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { Platform } from "react-native";
+import { storage } from "@/lib/storage";
 
-type Theme = "light" | "dark" | "system";
+export type Theme = "light" | "dark";
 
 type ThemeContextValue = {
   theme: Theme;
-  colorScheme: "light" | "dark";
-  toggleTheme: (next?: Theme) => void;
+  colorScheme: Theme;
+  toggleTheme: () => void;
+  setTheme: (t: Theme) => void;
+  isReady: boolean;
 };
 
-const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
-const THEME_KEY = "themePreference";
+const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("system");
-  const [systemScheme, setSystemScheme] = useState<"light" | "dark">(Appearance.getColorScheme() ?? "light");
+const THEME_KEY = "theme";
+
+function applyWebDarkClass(theme: Theme) {
+  if (Platform.OS !== "web") return;
+  const root = document.documentElement;
+  if (theme === "dark") root.classList.add("dark");
+  else root.classList.remove("dark");
+}
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setThemeState] = useState<Theme>("dark");
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(THEME_KEY).then((stored) => {
-      if (stored === "light" || stored === "dark" || stored === "system") {
-        setTheme(stored);
-      }
-    });
-    const listener = Appearance.addChangeListener(({ colorScheme }) => {
-      setSystemScheme(colorScheme ?? "light");
-    });
-    return () => listener.remove();
+    (async () => {
+      const saved = await storage.get<Theme>(THEME_KEY);
+      const next = saved === "light" || saved === "dark" ? saved : "dark";
+      setThemeState(next);
+      applyWebDarkClass(next);
+      setIsReady(true);
+    })();
   }, []);
 
-  const toggleTheme = useCallback((next?: Theme) => {
-    const newTheme = next ?? (theme === "dark" ? "light" : "dark");
-    setTheme(newTheme);
-    AsyncStorage.setItem(THEME_KEY, newTheme).catch(() => undefined);
-  }, [theme]);
+  const setTheme = useCallback(async (t: Theme) => {
+    setThemeState(t);
+    applyWebDarkClass(t);
+    await storage.set(THEME_KEY, t);
+  }, []);
 
-  const colorScheme = theme === "system" ? systemScheme : theme;
+  const toggleTheme = useCallback(() => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  }, [setTheme, theme]);
 
-  const value = useMemo(() => ({ theme, colorScheme, toggleTheme }), [theme, colorScheme, toggleTheme]);
-
-  return (
-    <ThemeContext.Provider value={value}>
-      <View className={cn("flex-1", colorScheme === "dark" && "dark")}>{children}</View>
-    </ThemeContext.Provider>
+  const value = useMemo<ThemeContextValue>(
+    () => ({ theme, colorScheme: theme, toggleTheme, setTheme, isReady }),
+    [theme, toggleTheme, setTheme, isReady]
   );
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme() {

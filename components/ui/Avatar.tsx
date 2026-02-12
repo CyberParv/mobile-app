@@ -1,64 +1,48 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Image, Text, View } from "react-native";
-import colors from "@/constants/colors";
 import { cn } from "@/lib/utils";
 
-type AvatarSize = "sm" | "md" | "lg";
+type AvatarSize = "sm" | "md" | "lg" | "xl";
 
-const sizes: Record<AvatarSize, number> = {
-  sm: 32,
-  md: 48,
-  lg: 64
+export type AvatarProps = {
+  name?: string | null;
+  uri?: string | null;
+  size?: AvatarSize;
+  className?: string;
 };
 
-interface AvatarProps {
-  uri?: string | null;
-  name?: string;
-  size?: AvatarSize;
-  online?: boolean;
+const sizeMap: Record<AvatarSize, { box: number; text: string }> = {
+  sm: { box: 32, text: "text-xs" },
+  md: { box: 40, text: "text-sm" },
+  lg: { box: 56, text: "text-base" },
+  xl: { box: 72, text: "text-lg" },
+};
+
+function initialsFromName(name?: string | null) {
+  const n = (name ?? "").trim();
+  if (!n) return "?";
+  const parts = n.split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+  return (first + last).toUpperCase() || "?";
 }
 
-export default function Avatar({ uri, name, size = "md", online }: AvatarProps) {
-  const dimension = sizes[size];
-  const initials = name
-    ? name
-        .split(" ")
-        .slice(0, 2)
-        .map((part) => part.charAt(0).toUpperCase())
-        .join("")
-    : "?";
+export function Avatar({ name, uri, size = "md", className }: AvatarProps) {
+  const s = sizeMap[size];
+  const initials = useMemo(() => initialsFromName(name), [name]);
 
   return (
-    <View className="relative">
+    <View
+      className={cn("bg-bg-subtle border border-border items-center justify-center overflow-hidden", "rounded-full", className)}
+      style={{ width: s.box, height: s.box }}
+      accessibilityRole="image"
+      accessibilityLabel={name ? `Avatar for ${name}` : "Avatar"}
+    >
       {uri ? (
-        <Image
-          source={{ uri }}
-          style={{ width: dimension, height: dimension, borderRadius: dimension / 2 }}
-          accessibilityLabel={name ? `${name} avatar` : "User avatar"}
-        />
+        <Image source={{ uri }} style={{ width: s.box, height: s.box }} resizeMode="cover" />
       ) : (
-        <View
-          style={{ width: dimension, height: dimension, borderRadius: dimension / 2, backgroundColor: colors.secondary }}
-          className="items-center justify-center"
-        >
-          <Text className={cn("text-white font-semibold", size === "sm" ? "text-sm" : size === "md" ? "text-lg" : "text-xl")}>{initials}</Text>
-        </View>
+        <Text className={cn("text-text font-semibold", s.text)}>{initials}</Text>
       )}
-      {online ? (
-        <View
-          style={{
-            position: "absolute",
-            bottom: 2,
-            right: 2,
-            width: 10,
-            height: 10,
-            borderRadius: 5,
-            backgroundColor: colors.success,
-            borderWidth: 2,
-            borderColor: colors.background
-          }}
-        />
-      ) : null}
     </View>
   );
 }

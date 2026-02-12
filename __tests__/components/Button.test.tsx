@@ -2,7 +2,7 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import Button from '@/components/ui/Button';
 
-describe('Button Component', () => {
+describe('Button', () => {
   it('renders children correctly', () => {
     const { getByText } = render(<Button>Click Me</Button>);
     expect(getByText('Click Me')).toBeTruthy();
@@ -21,16 +21,16 @@ describe('Button Component', () => {
   });
 
   it('is disabled when disabled=true', () => {
-    const { getByRole } = render(<Button disabled>Disabled</Button>);
-    expect(getByRole('button')).toBeDisabled();
+    const { getByText } = render(<Button disabled>Disabled</Button>);
+    expect(getByText('Disabled').props.accessibilityState.disabled).toBe(true);
   });
 
   it('applies variant styles correctly', () => {
     const { getByText } = render(<Button variant="primary">Primary</Button>);
-    expect(getByText('Primary')).toHaveStyle({ backgroundColor: 'blue' });
+    expect(getByText('Primary').props.style).toContainEqual(expect.objectContaining({ backgroundColor: 'blue' }));
   });
 
-  it('is accessible with correct role', () => {
+  it('is accessible (has correct role)', () => {
     const { getByRole } = render(<Button>Accessible</Button>);
     expect(getByRole('button')).toBeTruthy();
   });

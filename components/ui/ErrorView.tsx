@@ -1,22 +1,25 @@
-import React, { ReactNode } from "react";
-import { View, Text } from "react-native";
-import Button from "./Button";
+import React from "react";
+import { Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Button } from "@/components/ui/Button";
 
-interface ErrorViewProps {
-  icon?: ReactNode;
-  message: string;
+export type ErrorViewProps = {
+  message?: string;
   onRetry?: () => void;
-}
+};
 
-export default function ErrorView({ icon, message, onRetry }: ErrorViewProps) {
+export function ErrorView({ message = "Something went wrong.", onRetry }: ErrorViewProps) {
   return (
-    <View className="items-center justify-center px-6 py-8">
-      {icon ? <View className="mb-3">{icon}</View> : null}
-      <Text className="text-base text-text mb-4 text-center">{message}</Text>
+    <View className="flex-1 items-center justify-center px-6 py-10">
+      <Ionicons name="alert-circle" size={44} color="#EF4444" />
+      <Text className="text-text text-lg font-semibold mt-4 text-center">Error</Text>
+      <Text className="text-text-muted mt-2 text-center">{message}</Text>
       {onRetry ? (
-        <Button variant="secondary" size="md" onPress={onRetry}>
-          Retry
-        </Button>
+        <View className="mt-6 w-full">
+          <Button onPress={onRetry} variant="outline">
+            Retry
+          </Button>
+        </View>
       ) : null}
     </View>
   );

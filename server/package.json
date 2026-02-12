@@ -1,5 +1,5 @@
 {
-  "name": "fitness-api",
+  "name": "api-server",
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
@@ -7,26 +7,28 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "db:push": "prisma db push",
-    "db:seed": "tsx src/seed.ts"
+    "db:generate": "prisma generate",
+    "db:seed": "ts-node src/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^4.5.0",
+    "@prisma/client": "^3.0.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
-    "dotenv": "^16.0.3",
-    "express": "^4.17.3",
-    "express-rate-limit": "^5.5.1",
-    "helmet": "^5.0.1",
+    "express": "^4.17.1",
+    "express-rate-limit": "^5.2.6",
+    "helmet": "^4.6.0",
     "jsonwebtoken": "^8.5.1",
-    "morgan": "^1.10.0"
+    "uuid": "^8.3.2"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.2",
     "@types/cors": "^2.8.12",
     "@types/express": "^4.17.13",
-    "@types/jsonwebtoken": "^8.5.8",
-    "prisma": "^4.5.0",
-    "tsx": "^3.0.0",
-    "typescript": "^4.5.4"
+    "@types/jsonwebtoken": "^8.5.5",
+    "@types/uuid": "^8.3.3",
+    "prisma": "^3.0.0",
+    "ts-node": "^10.2.1",
+    "typescript": "^4.3.5",
+    "tsx": "^3.8.0"
   }
 }

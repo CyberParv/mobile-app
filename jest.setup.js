@@ -1,8 +1,33 @@
-import '@testing-library/jest-native/extend-expect';
-jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'));
-jest.mock('expo-secure-store', () => ({ getItemAsync: jest.fn(), setItemAsync: jest.fn(), deleteItemAsync: jest.fn() }));
-jest.mock('expo-router', () => ({ useRouter: jest.fn(), useLocalSearchParams: jest.fn(), Link: 'TouchableOpacity' }));
+import mockAsyncStorage from '@react-native-async-storage/async-storage/jest/async-storage-mock';
+import * as SecureStore from 'expo-secure-store';
+import { jest } from '@jest/globals';
+
+jest.mock('@react-native-async-storage/async-storage', () => mockAsyncStorage);
+
+jest.mock('expo-secure-store', () => ({
+  getItemAsync: jest.fn(),
+  setItemAsync: jest.fn(),
+  deleteItemAsync: jest.fn()
+}));
+
+jest.mock('expo-router', () => ({
+  useRouter: jest.fn(),
+  useLocalSearchParams: jest.fn(),
+  Link: 'Link'
+}));
+
 jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
-jest.mock('react-native-gesture-handler', () => ({}));
+
+jest.mock('react-native-gesture-handler', () => {
+  return {
+    GestureHandlerRootView: ({ children }) => children
+  };
+});
+
 global.fetch = jest.fn();
-console.warn = jest.fn((...args) => { if (!args[0].includes('NativeWind')) console.error(...args); });
+
+jest.spyOn(console, 'warn').mockImplementation((message) => {
+  if (!message.includes('NativeWind')) {
+    console.warn(message);
+  }
+});

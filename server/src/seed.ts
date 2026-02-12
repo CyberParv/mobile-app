@@ -1,31 +1,26 @@
-import prisma from './lib/prisma';
+import { prisma } from './lib/prisma';
+import bcrypt from 'bcryptjs';
 
 async function main() {
-  await prisma.user.create({
+  const password = await bcrypt.hash('password123', 12);
+  const user = await prisma.user.create({
     data: {
       email: 'test@example.com',
-      passwordHash: '$2a$12$1234567890123456789012',
-      status: 'active',
-      userProfiles: {
-        create: {
-          displayName: 'Test User',
-          timezone: 'UTC',
-        },
-      },
-      userSettings: {
-        create: {
-          units: 'metric',
-          weekStartsOn: 'monday',
-          biometricUnlockEnabled: false,
-          pushNotificationsEnabled: true,
-          dataSharingAnalyticsOptIn: false,
-        },
-      },
-    },
+      password,
+      name: 'Test User'
+    }
+  });
+
+  await prisma.entity.create({
+    data: {
+      name: 'Sample Entity',
+      userId: user.id
+    }
   });
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+main()
+  .catch(e => console.error(e))
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

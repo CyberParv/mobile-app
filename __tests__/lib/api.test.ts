@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { getToken } from '@/lib/secureStorage';
-import { mockApi } from '../utils/test-utils';
-import api from '@/lib/api';
+import { apiRequest } from '@/lib/api';
 
 jest.mock('axios');
 
@@ -9,28 +8,37 @@ jest.mock('@/lib/secureStorage', () => ({
   getToken: jest.fn()
 }));
 
-describe('API Tests', () => {
+const mockedAxios = axios as jest.Mocked<typeof axios>;
+
+
+describe('apiRequest', () => {
   it('adds auth header when token exists', async () => {
-    getToken.mockResolvedValue('valid-token');
-    await api.get('/data');
-    expect(axios.get).toHaveBeenCalledWith('/data', { headers: { Authorization: 'Bearer valid-token' } });
+    getToken.mockImplementationOnce(() => Promise.resolve('token'));
+    mockedAxios.request.mockResolvedValue({ data: {} });
+    await apiRequest({ url: '/test' });
+    expect(mockedAxios.request).toHaveBeenCalledWith(expect.objectContaining({
+      headers: { Authorization: 'Bearer token' }
+    }));
   });
 
   it('does not add auth header when no token', async () => {
-    getToken.mockResolvedValue(null);
-    await api.get('/data');
-    expect(axios.get).toHaveBeenCalledWith('/data', { headers: {} });
+    getToken.mockImplementationOnce(() => Promise.resolve(null));
+    mockedAxios.request.mockResolvedValue({ data: {} });
+    await apiRequest({ url: '/test' });
+    expect(mockedAxios.request).toHaveBeenCalledWith(expect.not.objectContaining({
+      headers: { Authorization: 'Bearer token' }
+    }));
   });
 
   it('handles network timeout', async () => {
-    axios.get.mockRejectedValueOnce({ code: 'ECONNABORTED' });
-    await expect(api.get('/timeout')).rejects.toThrow('Network timeout');
+    mockedAxios.request.mockRejectedValueOnce(new Error('timeout'));
+    await expect(apiRequest({ url: '/test' })).rejects.toThrow('timeout');
   });
 
   it('retries on network failure', async () => {
-    axios.get.mockRejectedValueOnce(new Error('Network Error'));
-    mockApi.mockResolvedValueOnce({ retry: true });
-    await api.get('/data');
-    expect(axios.get).toHaveBeenCalledTimes(2);
+    mockedAxios.request.mockRejectedValueOnce(new Error('Network Error'));
+    mockedAxios.request.mockResolvedValueOnce({ data: {} });
+    await apiRequest({ url: '/test' });
+    expect(mockedAxios.request).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,47 +1,49 @@
 import React from 'react';
-import { renderWithProviders, mockApi } from '../utils/test-utils';
-import { fireEvent, waitFor } from '@testing-library/react-native';
+import { render, waitFor, fireEvent } from '@testing-library/react-native';
 import TabScreen from '@/app/(tabs)/index';
+import { renderWithProviders, mockApi } from '../utils/test-utils';
 
-describe('TabScreen', () => {
+describe('Tab Screen', () => {
   it('renders loading skeleton initially', () => {
-    mockApi.mockReturnValueOnce(new Promise(() => {}));
     const { getByTestId } = renderWithProviders(<TabScreen />);
-    expect(getByTestId('skeleton-loader')).toBeTruthy();
+    expect(getByTestId('loading-skeleton')).toBeTruthy();
   });
 
   it('renders data after successful fetch', async () => {
-    const data = [{ id: 1, name: 'Item 1' }];
-    mockApi.mockResolvedValueOnce(data);
+    mockApi({ data: [{ id: 1, name: 'Item 1' }] });
     const { getByText } = renderWithProviders(<TabScreen />);
-    await waitFor(() => expect(getByText('Item 1')).toBeTruthy());
+    await waitFor(() => {
+      expect(getByText('Item 1')).toBeTruthy();
+    });
   });
 
   it('renders empty state when no data', async () => {
-    mockApi.mockResolvedValueOnce([]);
+    mockApi({ data: [] });
     const { getByText } = renderWithProviders(<TabScreen />);
-    await waitFor(() => expect(getByText('No items available')).toBeTruthy());
+    await waitFor(() => {
+      expect(getByText('No items found')).toBeTruthy();
+    });
   });
 
   it('renders error state when fetch fails', async () => {
-    mockApi.mockRejectedValueOnce(new Error('Fetch Error'));
+    mockApi(Promise.reject(new Error('Fetch error')));
     const { getByText } = renderWithProviders(<TabScreen />);
-    await waitFor(() => expect(getByText('Failed to load data')).toBeTruthy());
+    await waitFor(() => {
+      expect(getByText('Error loading data')).toBeTruthy();
+    });
   });
 
   it('pull-to-refresh triggers refetch', async () => {
-    const fetchData = jest.fn().mockResolvedValueOnce([{ id: 1, name: 'Item 1' }]);
-    mockApi.mockImplementation(fetchData);
-    const { getByText, getByTestId } = renderWithProviders(<TabScreen />);
-    await waitFor(() => expect(getByText('Item 1')).toBeTruthy());
-    fireEvent.scroll(getByTestId('scroll-view'), { nativeEvent: { contentOffset: { y: -100 } } });
-    expect(fetchData).toHaveBeenCalledTimes(2);
+    const { getByTestId } = renderWithProviders(<TabScreen />);
+    fireEvent(getByTestId('pull-to-refresh'), 'refresh');
+    await waitFor(() => {
+      expect(mockApi).toHaveBeenCalledTimes(2);
+    });
   });
 
   it('navigation to detail screen works', () => {
     const { getByText } = renderWithProviders(<TabScreen />);
-    const router = useRouter();
     fireEvent.press(getByText('Item 1'));
-    expect(router.navigate).toHaveBeenCalledWith('/details/1');
+    expect(useRouter().push).toHaveBeenCalledWith('/detail/1');
   });
 });
