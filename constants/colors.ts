@@ -1,47 +1,28 @@
 export const colors = {
-  bg: {
-    default: "#0B1220",
-    subtle: "#0F172A",
-    card: "#111B2E",
+  background: {
+    light: "#0B1220",
+    dark: "#050A14",
+    surfaceLight: "#0F1A2E",
+    surfaceDark: "#0A1222"
   },
   text: {
-    default: "#E5E7EB",
-    muted: "#9CA3AF",
-    subtle: "#CBD5E1",
+    light: "#E6EAF2",
+    dark: "#E6EAF2",
+    mutedLight: "#AAB4C5",
+    mutedDark: "#9AA6BB"
   },
   border: {
-    default: "#22304A",
-    subtle: "#1F2A44",
+    light: "#1E2A44",
+    dark: "#16233B"
   },
-  primary: {
-    50: "#EFF6FF",
-    100: "#DBEAFE",
-    200: "#BFDBFE",
-    300: "#93C5FD",
-    400: "#60A5FA",
-    500: "#3B82F6",
-    600: "#2563EB",
-    700: "#1D4ED8",
-    800: "#1E40AF",
-    900: "#1E3A8A",
-    default: "#3B82F6",
+  brand: {
+    primary: "#6366F1",
+    primaryDark: "#4F46E5"
   },
-  success: {
-    default: "#22C55E",
-    subtle: "#DCFCE7",
-  },
-  warning: {
-    default: "#F59E0B",
-    subtle: "#FEF3C7",
-  },
-  danger: {
-    default: "#EF4444",
-    subtle: "#FEE2E2",
-  },
-  info: {
-    default: "#06B6D4",
-    subtle: "#CFFAFE",
-  },
+  status: {
+    success: "#22C55E",
+    warning: "#F59E0B",
+    error: "#EF4444",
+    info: "#38BDF8"
+  }
 } as const;
-
-export type AppColors = typeof colors;

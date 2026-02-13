@@ -7,10 +7,13 @@ export function useDashboardData() {
   const [error, setError] = useState(null);
 
   const fetchData = useCallback(async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      const response = await api.get('/dashboard');
-      setData(response.data);
+      const [workouts, meals] = await Promise.all([
+        api.get('/workouts'),
+        api.get('/meals')
+      ]);
+      setData({ workouts: workouts.data, meals: meals.data });
     } catch (err) {
       setError(err);
     } finally {

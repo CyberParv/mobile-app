@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { View, Text, KeyboardAvoidingView, Platform } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Button, Input, Spinner } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
-import { Button, Input } from '@/components/ui';
-import { useRouter } from 'next/router';
 
 export default function LoginScreen() {
   const { login, isLoading } = useAuth();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const router = useRouter();
 
   const handleLogin = async () => {
     try {
@@ -21,11 +21,9 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1, justifyContent: 'center', padding: 16 }}
-    >
-      <View>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <View className="p-4">
+        <Text className="text-2xl font-bold mb-4">Login</Text>
         <Input
           placeholder="Email"
           value={email}
@@ -40,12 +38,12 @@ export default function LoginScreen() {
           onChangeText={setPassword}
           secureTextEntry
         />
-        {error ? <Text style={{ color: 'red' }}>{error}</Text> : null}
+        {error ? <Text className="text-red-500 mt-2">{error}</Text> : null}
         <Button onPress={handleLogin} disabled={isLoading}>
-          {isLoading ? <Spinner /> : <Text>Login</Text>}
+          {isLoading ? <Spinner /> : <Text className="text-white">Login</Text>}
         </Button>
         <Button onPress={() => router.push('/(auth)/signup')}>
-          <Text>Sign Up</Text>
+          <Text className="text-blue-500">Sign Up</Text>
         </Button>
       </View>
     </KeyboardAvoidingView>

@@ -2,55 +2,70 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { Platform } from "react-native";
 import { storage } from "@/lib/storage";
 
-export type Theme = "light" | "dark";
+type ThemeMode = "light" | "dark" | "system";
 
 type ThemeContextValue = {
-  theme: Theme;
-  colorScheme: Theme;
-  toggleTheme: () => void;
-  setTheme: (t: Theme) => void;
-  isReady: boolean;
+  mode: ThemeMode;
+  isDark: boolean;
+  setMode: (mode: ThemeMode) => Promise<void>;
+  toggle: () => Promise<void>;
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-const THEME_KEY = "theme";
+const STORAGE_KEY = "themeMode";
 
-function applyWebDarkClass(theme: Theme) {
-  if (Platform.OS !== "web") return;
-  const root = document.documentElement;
-  if (theme === "dark") root.classList.add("dark");
-  else root.classList.remove("dark");
+function getSystemIsDark(): boolean {
+  // NativeWind uses class-based dark mode; on native it reads from Appearance.
+  // We keep a simple heuristic: default to false on web unless user sets.
+  if (Platform.OS === "web") return false;
+  // Avoid importing Appearance to keep provider lightweight; system mode is treated as light by default.
+  return false;
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
-  const [isReady, setIsReady] = useState(false);
+  const [mode, setModeState] = useState<ThemeMode>("system");
+
+  const isDark = useMemo(() => {
+    if (mode === "dark") return true;
+    if (mode === "light") return false;
+    return getSystemIsDark();
+  }, [mode]);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
-      const saved = await storage.get<Theme>(THEME_KEY);
-      const next = saved === "light" || saved === "dark" ? saved : "dark";
-      setThemeState(next);
-      applyWebDarkClass(next);
-      setIsReady(true);
+      const saved = await storage.get<ThemeMode>(STORAGE_KEY);
+      if (!cancelled && saved) setModeState(saved);
     })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const setTheme = useCallback(async (t: Theme) => {
-    setThemeState(t);
-    applyWebDarkClass(t);
-    await storage.set(THEME_KEY, t);
+  useEffect(() => {
+    // NativeWind class-based dark mode: on web we can set document class.
+    if (Platform.OS === "web") {
+      try {
+        const root = document.documentElement;
+        if (isDark) root.classList.add("dark");
+        else root.classList.remove("dark");
+      } catch {
+        // ignore
+      }
+    }
+  }, [isDark]);
+
+  const setMode = useCallback(async (next: ThemeMode) => {
+    setModeState(next);
+    await storage.set(STORAGE_KEY, next);
   }, []);
 
-  const toggleTheme = useCallback(() => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  }, [setTheme, theme]);
+  const toggle = useCallback(async () => {
+    await setMode(isDark ? "light" : "dark");
+  }, [isDark, setMode]);
 
-  const value = useMemo<ThemeContextValue>(
-    () => ({ theme, colorScheme: theme, toggleTheme, setTheme, isReady }),
-    [theme, toggleTheme, setTheme, isReady]
-  );
+  const value = useMemo<ThemeContextValue>(() => ({ mode, isDark, setMode, toggle }), [mode, isDark, setMode, toggle]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

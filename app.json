@@ -4,10 +4,8 @@
     "slug": "expo-production-scaffold",
     "scheme": "exposcaffold",
     "newArchEnabled": true,
-    "plugins": [
-      "expo-router",
-      "expo-secure-store"
-    ],
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router", "expo-secure-store"],
     "ios": {
       "supportsTablet": true
     },

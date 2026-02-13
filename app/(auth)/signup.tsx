@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Button, Input, Spinner } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
-import { Button, Input } from '@/components/ui';
-import { useRouter } from 'next/router';
 
 export default function SignupScreen() {
   const { signup, isLoading } = useAuth();
+  const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const router = useRouter();
 
   const handleSignup = async () => {
     if (password !== confirmPassword) {
@@ -27,43 +27,39 @@ export default function SignupScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1, justifyContent: 'center', padding: 16 }}
-    >
-      <View>
-        <Input
-          placeholder="Name"
-          value={name}
-          onChangeText={setName}
-        />
-        <Input
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <Input
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-        <Input
-          placeholder="Confirm Password"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry
-        />
-        {error ? <Text style={{ color: 'red' }}>{error}</Text> : null}
-        <Button onPress={handleSignup} disabled={isLoading}>
-          {isLoading ? <Spinner /> : <Text>Sign Up</Text>}
-        </Button>
-        <Button onPress={() => router.push('/(auth)/login')}>
-          <Text>Login</Text>
-        </Button>
-      </View>
-    </KeyboardAvoidingView>
+    <View className="p-4">
+      <Text className="text-2xl font-bold mb-4">Sign Up</Text>
+      <Input
+        placeholder="Name"
+        value={name}
+        onChangeText={setName}
+      />
+      <Input
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+      />
+      <Input
+        placeholder="Password"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+      />
+      <Input
+        placeholder="Confirm Password"
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        secureTextEntry
+      />
+      {error ? <Text className="text-red-500 mt-2">{error}</Text> : null}
+      <Button onPress={handleSignup} disabled={isLoading}>
+        {isLoading ? <Spinner /> : <Text className="text-white">Sign Up</Text>}
+      </Button>
+      <Button onPress={() => router.push('/(auth)/login')}>
+        <Text className="text-blue-500">Login</Text>
+      </Button>
+    </View>
   );
 }

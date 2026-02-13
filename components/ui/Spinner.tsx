@@ -1,24 +1,26 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { ActivityIndicator, View } from "react-native";
 
 type SpinnerSize = "sm" | "md" | "lg";
 
-export type SpinnerProps = {
-  size?: SpinnerSize;
-  color?: string;
-  className?: string;
-};
+export function Spinner({ size = "md", color }: { size?: SpinnerSize; color?: string }) {
+  const indicatorSize = useMemo(() => {
+    switch (size) {
+      case "sm":
+        return "small" as const;
+      case "lg":
+        return "large" as const;
+      case "md":
+      default:
+        return "small" as const;
+    }
+  }, [size]);
 
-const sizeMap: Record<SpinnerSize, number> = {
-  sm: 16,
-  md: 22,
-  lg: 30,
-};
+  const resolvedColor = color ?? "rgba(255,255,255,0.85)";
 
-export function Spinner({ size = "md", color = "#3B82F6", className }: SpinnerProps) {
   return (
-    <View className={className}>
-      <ActivityIndicator size={sizeMap[size]} color={color} />
+    <View className="items-center justify-center">
+      <ActivityIndicator size={indicatorSize} color={resolvedColor} />
     </View>
   );
 }

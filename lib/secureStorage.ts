@@ -3,12 +3,10 @@ import * as SecureStore from "expo-secure-store";
 
 type SecureKey = string;
 
-const webPrefix = "secure:";
-
 export async function getSecureItem(key: SecureKey): Promise<string | null> {
   if (Platform.OS === "web") {
     try {
-      return window.localStorage.getItem(`${webPrefix}${key}`);
+      return typeof localStorage !== "undefined" ? localStorage.getItem(key) : null;
     } catch {
       return null;
     }
@@ -24,7 +22,7 @@ export async function getSecureItem(key: SecureKey): Promise<string | null> {
 export async function setSecureItem(key: SecureKey, value: string): Promise<void> {
   if (Platform.OS === "web") {
     try {
-      window.localStorage.setItem(`${webPrefix}${key}`, value);
+      if (typeof localStorage !== "undefined") localStorage.setItem(key, value);
     } catch {
       // ignore
     }
@@ -39,7 +37,7 @@ export async function setSecureItem(key: SecureKey, value: string): Promise<void
 export async function removeSecureItem(key: SecureKey): Promise<void> {
   if (Platform.OS === "web") {
     try {
-      window.localStorage.removeItem(`${webPrefix}${key}`);
+      if (typeof localStorage !== "undefined") localStorage.removeItem(key);
     } catch {
       // ignore
     }

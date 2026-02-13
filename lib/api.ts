@@ -1,97 +1,106 @@
-import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "axios";
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
+import Constants from "expo-constants";
 import { getSecureItem, removeSecureItem, setSecureItem } from "@/lib/secureStorage";
 
-type ApiErrorShape = {
-  message?: string;
-  code?: string;
+const baseURL =
+  (Constants.expoConfig?.extra as any)?.API_BASE_URL ||
+  process.env.EXPO_PUBLIC_API_BASE_URL ||
+  "http://localhost:3000";
+
+type ApiSuccess<T> = { success: true; data: T };
+
+type TokenPair = {
+  accessToken: string;
+  refreshToken: string;
 };
 
-type RefreshResponse = {
-  data: {
-    tokens: {
-      accessToken: string;
-      refreshToken: string;
-    };
-  };
-};
+let refreshPromise: Promise<TokenPair> | null = null;
 
-const baseURL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
-
-export const api: AxiosInstance = axios.create({
-  baseURL,
-  timeout: 15000,
-  headers: {
-    Accept: "application/json",
-    "Content-Type": "application/json",
-  },
-});
-
-function isAuthExcluded(url?: string) {
-  if (!url) return false;
-  return url.includes("/auth/login") || url.includes("/auth/signup") || url.includes("/auth/refresh");
+async function clearTokens() {
+  await Promise.all([removeSecureItem("accessToken"), removeSecureItem("refreshToken")]);
 }
 
-api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
-  if (!isAuthExcluded(config.url)) {
+async function refreshTokens(instance: AxiosInstance): Promise<TokenPair> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    const refreshToken = await getSecureItem("refreshToken");
+    if (!refreshToken) throw new Error("Missing refresh token");
+
+    // Use a bare request without interceptors to avoid recursion.
+    const res = await axios.post<ApiSuccess<{ tokens: TokenPair }>>(
+      `${baseURL}/auth/refresh`,
+      { refreshToken },
+      { timeout: 15000 }
+    );
+
+    const tokens = res.data.data.tokens;
+    await Promise.all([
+      setSecureItem("accessToken", tokens.accessToken),
+      setSecureItem("refreshToken", tokens.refreshToken),
+    ]);
+
+    return tokens;
+  })();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
+}
+
+export const api = axios.create({ baseURL, timeout: 15000 });
+export default api;
+
+api.interceptors.request.use(async (config) => {
+  const url = config.url ?? "";
+  const isAuthRoute = url.includes("/auth/login") || url.includes("/auth/signup") || url.includes("/auth/refresh");
+
+  if (!isAuthRoute) {
     const token = await getSecureItem("accessToken");
     if (token) {
-      config.headers = config.headers ?? {};
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers = {
+        ...(config.headers ?? {}),
+        Authorization: `Bearer ${token}`,
+      };
     }
   }
+
   return config;
 });
 
-let refreshPromise: Promise<{ accessToken: string; refreshToken: string } | null> | null = null;
-
-async function refreshTokens(): Promise<{ accessToken: string; refreshToken: string } | null> {
-  const refreshToken = await getSecureItem("refreshToken");
-  if (!refreshToken) return null;
-
-  try {
-    const res = await api.post<any, RefreshResponse>("/auth/refresh", { refreshToken });
-    const { accessToken, refreshToken: newRefreshToken } = res.data.tokens;
-    await setSecureItem("accessToken", accessToken);
-    await setSecureItem("refreshToken", newRefreshToken);
-    return { accessToken, refreshToken: newRefreshToken };
-  } catch {
-    await removeSecureItem("accessToken");
-    await removeSecureItem("refreshToken");
-    return null;
-  }
-}
-
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // unwrap AxiosResponse -> response.data
+    return response.data;
+  },
   async (error: AxiosError<any>) => {
     const status = error.response?.status;
-    const data: ApiErrorShape | undefined = error.response?.data;
+    const code = error.response?.data?.error?.code;
 
-    const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+    const originalConfig = error.config as (AxiosRequestConfig & { _retry?: boolean }) | undefined;
 
-    if (!originalRequest) throw error;
-
-    if (status === 401 && data?.code === "AUTH_TOKEN_EXPIRED" && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      if (!refreshPromise) {
-        refreshPromise = refreshTokens().finally(() => {
-          refreshPromise = null;
-        });
+    if (status === 401 && code === "AUTH_TOKEN_EXPIRED" && originalConfig && !originalConfig._retry) {
+      originalConfig._retry = true;
+      try {
+        const tokens = await refreshTokens(api);
+        originalConfig.headers = {
+          ...(originalConfig.headers ?? {}),
+          Authorization: `Bearer ${tokens.accessToken}`,
+        };
+        return api.request(originalConfig);
+      } catch (e) {
+        await clearTokens();
+        return Promise.reject(e);
       }
-
-      const tokens = await refreshPromise;
-      if (!tokens?.accessToken) {
-        throw error;
-      }
-
-      originalRequest.headers = originalRequest.headers ?? {};
-      originalRequest.headers.Authorization = `Bearer ${tokens.accessToken}`;
-      return api.request(originalRequest);
     }
 
-    throw error;
+    if (status === 401) {
+      // Any other 401: clear tokens to force re-auth.
+      await clearTokens();
+    }
+
+    return Promise.reject(error);
   }
 );
-
-export default api;

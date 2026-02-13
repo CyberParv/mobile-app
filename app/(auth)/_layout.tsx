@@ -1,10 +1,10 @@
 import React, { useEffect } from "react";
 import { Stack, useRouter } from "expo-router";
-import { useAuth } from "@/providers/AuthProvider";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AuthLayout() {
-  const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -16,7 +16,7 @@ export default function AuthLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        animation: "fade",
+        contentStyle: { backgroundColor: "#0B1220" },
       }}
     />
   );

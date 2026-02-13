@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { View, ViewProps } from "react-native";
+import { View } from "react-native";
 import Animated, {
   Easing,
   interpolate,
@@ -10,12 +10,17 @@ import Animated, {
 } from "react-native-reanimated";
 import { cn } from "@/lib/utils";
 
-export type SkeletonLoaderProps = ViewProps & {
+export function SkeletonLoader({
+  className,
+  height = 12,
+  width = "100%",
+  rounded = "rounded-xl",
+}: {
   className?: string;
-  rounded?: "sm" | "md" | "lg" | "full";
-};
-
-export function SkeletonLoader({ className, rounded = "md", style, ...props }: SkeletonLoaderProps) {
+  height?: number;
+  width?: number | string;
+  rounded?: string;
+}) {
   const progress = useSharedValue(0);
 
   useEffect(() => {
@@ -26,19 +31,16 @@ export function SkeletonLoader({ className, rounded = "md", style, ...props }: S
     );
   }, [progress]);
 
-  const animatedStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(progress.value, [0, 1], [0.45, 0.85]);
+  const shimmerStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(progress.value, [0, 1], [0.35, 0.75]);
     return { opacity };
   });
 
-  const radiusClass =
-    rounded === "sm" ? "rounded-lg" : rounded === "md" ? "rounded-xl" : rounded === "lg" ? "rounded-2xl" : "rounded-full";
-
   return (
-    <Animated.View
-      {...props}
-      style={[animatedStyle, style]}
-      className={cn("bg-border-subtle", radiusClass, className)}
-    />
+    <View style={{ width }} className={cn("overflow-hidden", rounded, className)}>
+      <Animated.View
+        style={[{ height, backgroundColor: "rgba(255,255,255,0.12)" }, shimmerStyle]}
+      />
+    </View>
   );
 }
