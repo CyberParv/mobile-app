@@ -1,135 +1,127 @@
 import React, { ReactNode, useMemo, useRef } from "react";
-import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  PressableProps,
-  StyleProp,
-  Text,
-  ViewStyle,
-} from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
-
+import { ActivityIndicator, Animated, Platform, Pressable, Text, ViewStyle } from "react-native";
 import { cn } from "@/lib/utils";
-import { colors } from "@/constants/colors";
 
 type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "destructive";
 type ButtonSize = "sm" | "md" | "lg";
 
-export type ButtonProps = Omit<PressableProps, "children"> & {
+export type ButtonProps = {
   children: ReactNode;
+  onPress?: () => void;
+  disabled?: boolean;
+  loading?: boolean;
   variant?: ButtonVariant;
   size?: ButtonSize;
-  loading?: boolean;
   className?: string;
-  style?: StyleProp<ViewStyle>;
+  testID?: string;
 };
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+function variantClasses(variant: ButtonVariant, disabled?: boolean) {
+  const base = disabled ? "opacity-60" : "";
+  switch (variant) {
+    case "secondary":
+      return cn(base, "bg-slate-200 dark:bg-slate-800");
+    case "outline":
+      return cn(base, "bg-transparent border border-slate-300 dark:border-slate-700");
+    case "ghost":
+      return cn(base, "bg-transparent");
+    case "destructive":
+      return cn(base, "bg-red-600");
+    default:
+      return cn(base, "bg-brand-600");
+  }
+}
+
+function textClasses(variant: ButtonVariant) {
+  switch (variant) {
+    case "secondary":
+      return "text-slate-900 dark:text-slate-100";
+    case "outline":
+      return "text-slate-900 dark:text-slate-100";
+    case "ghost":
+      return "text-brand-700 dark:text-brand-300";
+    case "destructive":
+      return "text-white";
+    default:
+      return "text-white";
+  }
+}
+
+function sizeClasses(size: ButtonSize) {
+  switch (size) {
+    case "sm":
+      return "h-10 px-3";
+    case "lg":
+      return "h-14 px-5";
+    default:
+      return "h-12 px-4";
+  }
+}
 
 export function Button({
   children,
+  onPress,
+  disabled,
+  loading,
   variant = "primary",
   size = "md",
-  loading = false,
-  disabled,
   className,
-  style,
-  ...props
+  testID
 }: ButtonProps) {
-  const scale = useSharedValue(1);
-  const isDisabled = disabled || loading;
-
-  const paddingClass = useMemo(() => {
-    switch (size) {
-      case "sm":
-        return "px-3 py-2";
-      case "lg":
-        return "px-5 py-4";
-      default:
-        return "px-4 py-3";
-    }
-  }, [size]);
-
-  const baseClass =
-    "rounded-xl flex-row items-center justify-center gap-2";
-
-  const variantClass = useMemo(() => {
-    switch (variant) {
-      case "secondary":
-        return "bg-slate-100 dark:bg-slate-800";
-      case "outline":
-        return "bg-transparent border border-slate-200 dark:border-slate-700";
-      case "ghost":
-        return "bg-transparent";
-      case "destructive":
-        return "bg-red-600";
-      default:
-        return "bg-brand-600";
-    }
-  }, [variant]);
-
-  const disabledClass = isDisabled ? "opacity-60" : "opacity-100";
-
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: scale.value }],
-    };
-  }, []);
-
-  const onPressIn = () => {
-    scale.value = withSpring(0.98, { damping: 18, stiffness: 250 });
-  };
-
-  const onPressOut = () => {
-    scale.value = withSpring(1, { damping: 18, stiffness: 250 });
-  };
+  const scale = useRef(new Animated.Value(1)).current;
 
   const spinnerColor = useMemo(() => {
-    if (variant === "primary" || variant === "destructive") return "#FFFFFF";
-    return colors.slate[900];
+    if (variant === "secondary" || variant === "outline") return Platform.OS === "web" ? "#0F172A" : undefined;
+    return "white";
   }, [variant]);
 
+  const pressIn = () => {
+    Animated.spring(scale, {
+      toValue: 0.98,
+      useNativeDriver: Platform.OS !== "web",
+      speed: 30,
+      bounciness: 0
+    }).start();
+  };
+
+  const pressOut = () => {
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: Platform.OS !== "web",
+      speed: 30,
+      bounciness: 6
+    }).start();
+  };
+
+  const isDisabled = disabled || loading;
+
+  const animatedStyle: ViewStyle = {
+    transform: [{ scale }]
+  };
+
   return (
-    <AnimatedPressable
-      accessibilityRole="button"
-      disabled={isDisabled}
-      onPressIn={(e) => {
-        onPressIn();
-        props.onPressIn?.(e);
-      }}
-      onPressOut={(e) => {
-        onPressOut();
-        props.onPressOut?.(e);
-      }}
-      className={cn(baseClass, paddingClass, variantClass, disabledClass, className)}
-      style={[animatedStyle, style]}
-      {...props}
-    >
-      {loading ? (
-        <ActivityIndicator
-          size={Platform.OS === "web" ? "small" : "small"}
-          color={spinnerColor}
-        />
-      ) : null}
-      {typeof children === "string" ? (
-        <Text
-          className={cn(
-            "font-semibold",
-            variant === "primary" || variant === "destructive"
-              ? "text-white"
-              : "text-slate-900 dark:text-white"
-          )}
-        >
-          {children}
-        </Text>
-      ) : (
-        children
-      )}
-    </AnimatedPressable>
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        testID={testID}
+        onPress={onPress}
+        disabled={isDisabled}
+        onPressIn={pressIn}
+        onPressOut={pressOut}
+        className={cn(
+          "w-full flex-row items-center justify-center rounded-2xl",
+          sizeClasses(size),
+          variantClasses(variant, isDisabled),
+          className
+        )}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: isDisabled, busy: !!loading }}
+      >
+        {loading ? (
+          <ActivityIndicator color={spinnerColor} />
+        ) : (
+          <Text className={cn("text-base font-semibold", textClasses(variant))}>{children}</Text>
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }

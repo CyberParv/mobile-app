@@ -1,15 +1,7 @@
 import React, { useMemo, useState } from "react";
-import {
-  Platform,
-  Text,
-  TextInput,
-  TextInputProps,
-  View,
-} from "react-native";
+import { Pressable, Text, TextInput, TextInputProps, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-
 import { cn } from "@/lib/utils";
-import { colors } from "@/constants/colors";
 
 export type InputProps = TextInputProps & {
   label?: string;
@@ -17,7 +9,7 @@ export type InputProps = TextInputProps & {
   leftIcon?: keyof typeof Ionicons.glyphMap;
   rightIcon?: keyof typeof Ionicons.glyphMap;
   onRightIconPress?: () => void;
-  className?: string;
+  containerClassName?: string;
 };
 
 export function Input({
@@ -27,92 +19,60 @@ export function Input({
   rightIcon,
   onRightIconPress,
   secureTextEntry,
+  containerClassName,
   className,
   ...props
 }: InputProps) {
-  const [isFocused, setIsFocused] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [isSecure, setIsSecure] = useState(!!secureTextEntry);
 
-  const isPassword = !!secureTextEntry;
-  const effectiveSecure = isPassword ? !showPassword : false;
+  const showPasswordToggle = useMemo(() => {
+    const hint = props.textContentType === "password" || props.autoComplete === "password";
+    return !!secureTextEntry || hint;
+  }, [secureTextEntry, props.textContentType, props.autoComplete]);
 
-  const borderClass = useMemo(() => {
-    if (error) return "border-red-500";
-    if (isFocused) return "border-brand-500";
-    return "border-slate-200 dark:border-slate-700";
-  }, [error, isFocused]);
-
-  const iconColor = useMemo(() => {
-    if (error) return colors.red[600];
-    if (isFocused) return colors.brand[600];
-    return colors.slate[500];
-  }, [error, isFocused]);
+  const effectiveRightIcon = showPasswordToggle ? (isSecure ? "eye" : "eye-off") : rightIcon;
 
   return (
-    <View className={cn("w-full", className)}>
-      {label ? (
-        <Text className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-200">
-          {label}
-        </Text>
-      ) : null}
+    <View className={cn("w-full", containerClassName)}>
+      {!!label && <Text className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-200">{label}</Text>}
 
       <View
         className={cn(
-          "flex-row items-center rounded-xl border bg-white dark:bg-slate-950 px-3",
-          borderClass
+          "h-12 w-full flex-row items-center rounded-2xl border bg-white px-3 dark:bg-slate-950",
+          error ? "border-red-500" : "border-slate-200 dark:border-slate-800"
         )}
       >
-        {leftIcon ? (
-          <View className="mr-2">
-            <Ionicons name={leftIcon} size={18} color={iconColor} />
-          </View>
-        ) : null}
+        {!!leftIcon && (
+          <Ionicons name={leftIcon} size={18} color={error ? "#EF4444" : "#64748B"} style={{ marginRight: 8 }} />
+        )}
 
         <TextInput
           {...props}
-          secureTextEntry={effectiveSecure}
-          onFocus={(e) => {
-            setIsFocused(true);
-            props.onFocus?.(e);
-          }}
-          onBlur={(e) => {
-            setIsFocused(false);
-            props.onBlur?.(e);
-          }}
-          placeholderTextColor={colors.slate[400]}
+          secureTextEntry={showPasswordToggle ? isSecure : secureTextEntry}
           className={cn(
-            "flex-1 text-slate-900 dark:text-white",
-            "h-12", // explicit height for web compatibility
-            Platform.OS === "web" ? "outline-none" : ""
+            "flex-1 text-base text-slate-900 dark:text-slate-100",
+            className
           )}
+          placeholderTextColor="#94A3B8"
+          style={[{ height: 48 }]}
         />
 
-        {isPassword ? (
-          <View className="ml-2">
-            <Ionicons
-              name={showPassword ? "eye-off" : "eye"}
-              size={18}
-              color={iconColor}
-              onPress={() => setShowPassword((v) => !v)}
-            />
-          </View>
-        ) : rightIcon ? (
-          <View className="ml-2">
-            <Ionicons
-              name={rightIcon}
-              size={18}
-              color={iconColor}
-              onPress={onRightIconPress}
-            />
-          </View>
-        ) : null}
+        {!!effectiveRightIcon && (
+          <Pressable
+            onPress={() => {
+              if (showPasswordToggle) setIsSecure((v) => !v);
+              else onRightIconPress?.();
+            }}
+            hitSlop={10}
+            className="ml-2"
+            accessibilityRole="button"
+          >
+            <Ionicons name={effectiveRightIcon} size={18} color={error ? "#EF4444" : "#64748B"} />
+          </Pressable>
+        )}
       </View>
 
-      {error ? (
-        <Text className="mt-2 text-sm text-red-600 dark:text-red-400">
-          {error}
-        </Text>
-      ) : null}
+      {!!error && <Text className="mt-2 text-sm text-red-600">{error}</Text>}
     </View>
   );
 }

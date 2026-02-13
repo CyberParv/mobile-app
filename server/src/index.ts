@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import { requestId } from './middleware/requestId';
 import { helmetMiddleware } from './middleware/helmet';
 import { corsMiddleware } from './middleware/cors';
-import { apiLimiter, strictLimiter } from './middleware/rateLimiter';
+import { authLimiter, apiLimiter, strictLimiter } from './middleware/rateLimiter';
 import { sanitize } from './middleware/sanitize';
 import { errorHandler } from './middleware/errorHandler';
 import authRoutes from './routes/auth';
@@ -17,15 +17,18 @@ app.use(express.json());
 app.use(requestId);
 app.use(helmetMiddleware);
 app.use(corsMiddleware);
-app.use(apiLimiter);
 app.use(sanitize);
 
 app.use('/auth', authRoutes);
-app.use('/entities', entityRoutes);
+app.use('/entity', apiLimiter, entityRoutes);
 
-app.get('/health', (req, res) => res.json({ success: true, data: { message: 'Healthy' } }));
+app.get('/health', (req, res) => {
+  res.json({ success: true, message: 'Server is healthy' });
+});
 
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});

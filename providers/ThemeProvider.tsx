@@ -1,56 +1,87 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { View } from "react-native";
-
+import { Platform } from "react-native";
 import { storage } from "@/lib/storage";
 
-type ThemeMode = "light" | "dark";
+export type ThemeMode = "light" | "dark" | "system";
 
 type ThemeContextValue = {
-  theme: ThemeMode;
-  setTheme: (mode: ThemeMode) => Promise<void>;
-  toggleTheme: () => Promise<void>;
+  mode: ThemeMode;
+  isDark: boolean;
+  setMode: (mode: ThemeMode) => void;
+  toggle: () => void;
+  className: string;
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-const STORAGE_KEY = "themeMode";
+function getSystemIsDark() {
+  if (Platform.OS === "web") {
+    try {
+      return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    } catch {
+      return false;
+    }
+  }
+  // On native, NativeWind will follow system if you don't set dark class.
+  // We still keep a best-effort boolean.
+  return false;
+}
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeMode>("light");
+  const [mode, setModeState] = useState<ThemeMode>("system");
+  const [systemIsDark, setSystemIsDark] = useState<boolean>(getSystemIsDark());
+
+  useEffect(() => {
+    let unsub: (() => void) | undefined;
+
+    if (Platform.OS === "web") {
+      try {
+        const mql = window.matchMedia("(prefers-color-scheme: dark)");
+        const handler = () => setSystemIsDark(mql.matches);
+        handler();
+        mql.addEventListener("change", handler);
+        unsub = () => mql.removeEventListener("change", handler);
+      } catch {
+        // ignore
+      }
+    }
+
+    return () => {
+      unsub?.();
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const saved = await storage.get<ThemeMode>(STORAGE_KEY);
-      if (!cancelled && (saved === "light" || saved === "dark")) {
-        setThemeState(saved);
-      }
+      const saved = await storage.get<ThemeMode>("themeMode");
+      if (!cancelled && saved) setModeState(saved);
     })();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const setTheme = useCallback(async (mode: ThemeMode) => {
-    setThemeState(mode);
-    await storage.set(STORAGE_KEY, mode);
+  const setMode = useCallback((next: ThemeMode) => {
+    setModeState(next);
+    storage.set("themeMode", next).catch(() => undefined);
   }, []);
 
-  const toggleTheme = useCallback(async () => {
-    await setTheme(theme === "dark" ? "light" : "dark");
-  }, [setTheme, theme]);
+  const isDark = mode === "dark" ? true : mode === "light" ? false : systemIsDark;
+
+  const toggle = useCallback(() => {
+    setMode(isDark ? "light" : "dark");
+  }, [isDark, setMode]);
+
+  // NativeWind class-based dark mode: apply `dark` class at a top-level View.
+  const className = isDark ? "dark" : "";
 
   const value = useMemo<ThemeContextValue>(
-    () => ({ theme, setTheme, toggleTheme }),
-    [theme, setTheme, toggleTheme]
+    () => ({ mode, isDark, setMode, toggle, className }),
+    [mode, isDark, setMode, toggle, className]
   );
 
-  // NativeWind class-based dark mode: apply "dark" class at the root.
-  return (
-    <ThemeContext.Provider value={value}>
-      <View className={theme === "dark" ? "flex-1 dark" : "flex-1"}>{children}</View>
-    </ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme() {

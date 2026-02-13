@@ -1,30 +1,26 @@
 import React from "react";
-import { Pressable, PressableProps, View } from "react-native";
-
+import { Pressable, View } from "react-native";
 import { cn } from "@/lib/utils";
 
 export type CardProps = {
   children: React.ReactNode;
+  onPress?: () => void;
   className?: string;
-  onPress?: PressableProps["onPress"];
 };
 
-export function Card({ children, className, onPress }: CardProps) {
-  const base =
-    "rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800";
-  const shadow =
-    "shadow-sm";
+export function Card({ children, onPress, className }: CardProps) {
+  const Container: any = onPress ? Pressable : View;
 
-  if (onPress) {
-    return (
-      <Pressable
-        onPress={onPress}
-        className={cn(base, shadow, "active:opacity-90", className)}
-      >
-        {children}
-      </Pressable>
-    );
-  }
-
-  return <View className={cn(base, shadow, className)}>{children}</View>;
+  return (
+    <Container
+      onPress={onPress}
+      className={cn(
+        "rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900",
+        className
+      )}
+      accessibilityRole={onPress ? "button" : undefined}
+    >
+      {children}
+    </Container>
+  );
 }

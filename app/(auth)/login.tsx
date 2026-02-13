@@ -1,88 +1,83 @@
-import { useEffect, useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Input, Button, Spinner } from '@/components/ui';
 import { useAuth } from '@/providers/AuthProvider';
+import { Button, Input, Spinner } from '@/components/ui';
 
 export default function LoginScreen() {
   const router = useRouter();
   const { login, isLoading } = useAuth();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  useEffect(() => {
-    // Autofocus email input on mount
-    emailInputRef?.current?.focus();
-  }, []);
+  const emailRef = useRef<TextInput>(null);
 
-  const emailInputRef = useRef<TextInput>(null);
+  useEffect(() => {
+    emailRef.current?.focus();
+  }, []);
 
   const handleLogin = async () => {
     setError('');
     try {
-      await login(email, password);
+      await login(email.trim(), password);
       router.replace('/(tabs)');
     } catch (err: any) {
-      setError(err.message || 'Login failed');
+      const message = err?.response?.data?.error?.message || 'Login failed';
+      setError(message);
     }
   };
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-background px-6 justify-center"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      className="flex-1 justify-center px-6 bg-background dark:bg-black"
     >
-      <View className="mb-8">
-        <Text className="text-3xl font-bold text-center text-text">Welcome Back</Text>
+      <View className="mb-10">
+        <Text className="text-3xl font-bold text-center text-gray-900 dark:text-white">Welcome Back</Text>
         <Text className="text-sm text-center text-gray-500 mt-2">Login to continue shopping</Text>
       </View>
 
       <Input
-        ref={emailInputRef}
+        ref={emailRef}
         label="Email"
+        value={email}
+        onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}
-        value={email}
-        onChangeText={setEmail}
         placeholder="you@example.com"
         className="mb-4"
       />
 
       <Input
         label="Password"
-        secureTextEntry={!showPassword}
         value={password}
         onChangeText={setPassword}
+        secureTextEntry={!showPassword}
         placeholder="••••••••"
-        className="mb-2"
-        rightIcon={
-          <Text
-            onPress={() => setShowPassword(!showPassword)}
-            className="text-sm text-primary font-medium"
-          >
-            {showPassword ? 'Hide' : 'Show'}
-          </Text>
-        }
+        rightIcon={showPassword ? 'eye-off' : 'eye'}
+        onRightIconPress={() => setShowPassword(!showPassword)}
+        className="mb-4"
       />
 
-      {error ? <Text className="text-red-500 text-sm mt-2 mb-4">{error}</Text> : null}
+      {error ? <Text className="text-red-500 text-sm mb-4 text-center">{error}</Text> : null}
 
-      <Button onPress={handleLogin} disabled={isLoading} className="mt-4">
+      <Button onPress={handleLogin} disabled={isLoading} className="mb-4">
         {isLoading ? <Spinner /> : <Text className="text-white font-semibold">Login</Text>}
       </Button>
 
-      <View className="flex-row justify-center mt-6">
-        <Text className="text-sm text-gray-500">Don't have an account?</Text>
+      <Text className="text-center text-sm text-gray-500">
+        Don't have an account?{' '}
         <Text
+          className="text-primary font-semibold"
           onPress={() => router.push('/(auth)/signup')}
-          className="text-sm text-primary font-medium ml-1"
         >
           Sign up
         </Text>
-      </View>
+      </Text>
     </KeyboardAvoidingView>
   );
 }

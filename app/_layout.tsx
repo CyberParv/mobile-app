@@ -1,69 +1,71 @@
 import "../global.css";
 
-import { Stack } from "expo-router";
-import * as SplashScreen from "expo-splash-screen";
-import * as Linking from "expo-linking";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import * as SplashScreen from "expo-splash-screen";
+import * as Linking from "expo-linking";
+import { Slot, useRouter } from "expo-router";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/providers/AuthProvider";
-import { ThemeProvider } from "@/providers/ThemeProvider";
 import { ToastProvider } from "@/providers/ToastProvider";
+import { ThemeProvider, useTheme } from "@/providers/ThemeProvider";
 
-SplashScreen.preventAutoHideAsync().catch(() => {
-  // no-op: can throw if called twice
-});
+SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 function RootContainer({ children }: { children: React.ReactNode }) {
-  if (Platform.OS === "web") return <View style={{ flex: 1 }}>{children}</View>;
-  return <GestureHandlerRootView style={{ flex: 1 }}>{children}</GestureHandlerRootView>;
+  const { className } = useTheme();
+  return <View className={className} style={{ flex: 1 }}>{children}</View>;
 }
 
 export default function RootLayout() {
-  const [isReady, setIsReady] = useState(false);
+  const router = useRouter();
+  const [ready, setReady] = useState(false);
 
-  const onReady = useCallback(async () => {
-    try {
-      await SplashScreen.hideAsync();
-    } finally {
-      setIsReady(true);
+  useEffect(() => {
+    let mounted = true;
+
+    async function prepare() {
+      // Place for font loading if needed.
+      // Keep splash until providers mount and first paint.
+      await new Promise((r) => setTimeout(r, 50));
+      if (mounted) setReady(true);
     }
+
+    prepare();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
-    // Keep splash visible briefly while providers mount and storage is read.
-    const t = setTimeout(() => {
-      onReady();
-    }, 250);
-    return () => clearTimeout(t);
-  }, [onReady]);
+    if (!ready) return;
+    SplashScreen.hideAsync().catch(() => undefined);
+  }, [ready]);
 
   useEffect(() => {
     if (Platform.OS === "web") return;
 
-    const handler = (event: { url: string }) => {
-      // Expo Router handles linking; this is here for side-effects/analytics if needed.
-      // Intentionally not calling Linking.getInitialURL() per requirement.
-      const url = event?.url;
-      if (!url) return;
-      // Example: could log or parse
-      Linking.parse(url);
+    const sub = Linking.addEventListener("url", (event) => {
+      const url = event.url;
+      // Example: exposcaffold://path
+      const parsed = Linking.parse(url);
+      const path = parsed.path ? `/${parsed.path}` : "/";
+      // Only navigate if it looks like an internal route.
+      if (path.startsWith("/")) {
+        router.push(path as any);
+      }
+    });
+
+    return () => {
+      sub.remove();
     };
+  }, [router]);
 
-    const sub = Linking.addEventListener("url", handler);
-    return () => sub.remove();
-  }, []);
-
-  const stackScreenOptions = useMemo(
-    () => ({
-      headerShown: false,
-      animation: Platform.OS === "android" ? "fade" : "default",
-    }),
-    []
-  );
+  const Wrapper = useMemo(() => (Platform.OS !== "web" ? GestureHandlerRootView : View), []);
 
   return (
     <ErrorBoundary>
@@ -71,11 +73,11 @@ export default function RootLayout() {
         <ThemeProvider>
           <ToastProvider>
             <AuthProvider>
-              <RootContainer>
-                <Stack screenOptions={stackScreenOptions} />
-                {/* Render nothing special while splash is visible; providers still mount */}
-                {!isReady ? null : null}
-              </RootContainer>
+              <Wrapper style={{ flex: 1 }}>
+                <RootContainer>
+                  <Slot />
+                </RootContainer>
+              </Wrapper>
             </AuthProvider>
           </ToastProvider>
         </ThemeProvider>

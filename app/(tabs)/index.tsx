@@ -1,63 +1,49 @@
 import React from "react";
 import { Text, View } from "react-native";
-
-import { Avatar, Button, Card } from "@/components/ui";
+import { Button, Card, Avatar } from "@/components/ui";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/providers/ToastProvider";
 
 export default function HomeScreen() {
-  const { user, logout, isLoading } = useAuth();
+  const { user, logout } = useAuth();
   const toast = useToast();
 
   const onLogout = async () => {
     try {
       await logout();
       toast.info("Signed out", "You have been logged out.");
-    } catch (e: any) {
-      toast.error("Logout failed", e?.message ?? "Please try again.");
+    } catch {
+      toast.error("Logout failed", "Please try again.");
     }
   };
 
   return (
-    <View className="flex-1 bg-white dark:bg-slate-950 px-5 pt-14">
+    <View className="flex-1 bg-slate-50 px-5 pt-16 dark:bg-slate-950">
       <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center">
-          <Avatar name={user?.name ?? "User"} size="md" />
-          <View className="ml-3">
-            <Text className="text-slate-500 dark:text-slate-400 text-sm">
-              Welcome
-            </Text>
-            <Text className="text-slate-900 dark:text-white text-xl font-semibold">
-              {user?.name ?? ""}
-            </Text>
-          </View>
+        <View>
+          <Text className="text-sm text-slate-600 dark:text-slate-300">Welcome</Text>
+          <Text className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">{user?.name ?? "User"}</Text>
         </View>
+        <Avatar name={user?.name ?? user?.email} size="md" />
       </View>
 
-      <View className="mt-6">
-        <Card className="p-4">
-          <Text className="text-slate-900 dark:text-white text-base font-semibold">
-            Dashboard
-          </Text>
-          <Text className="mt-2 text-slate-600 dark:text-slate-300">
-            This is a production-ready scaffold with auth, theming, toasts, and a
-            UI kit.
-          </Text>
+      <Card className="mt-6">
+        <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">Dashboard</Text>
+        <Text className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          This scaffold includes auth, theming, toasts, and a production-ready UI foundation.
+        </Text>
+        <View className="mt-4">
+          <Button variant="outline" onPress={onLogout}>
+            Logout
+          </Button>
+        </View>
+      </Card>
 
-          <View className="mt-4">
-            <Button
-              variant="outline"
-              size="md"
-              loading={isLoading}
-              onPress={onLogout}
-            >
-              <Text className="text-slate-900 dark:text-white font-semibold">
-                Logout
-              </Text>
-            </Button>
-          </View>
-        </Card>
-      </View>
+      <Card className="mt-4">
+        <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">Account</Text>
+        <Text className="mt-2 text-sm text-slate-600 dark:text-slate-300">Email: {user?.email ?? "—"}</Text>
+        <Text className="mt-1 text-sm text-slate-600 dark:text-slate-300">ID: {user?.id ?? "—"}</Text>
+      </Card>
     </View>
   );
 }

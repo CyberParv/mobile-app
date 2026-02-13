@@ -1,6 +1,5 @@
-import { Stack, useRouter } from "expo-router";
 import React, { useEffect } from "react";
-
+import { Stack, useRouter } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function AuthLayout() {
@@ -9,7 +8,7 @@ export default function AuthLayout() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.replace("/(tabs)");
+      router.replace("/(tabs)" as any);
     }
   }, [isAuthenticated, isLoading, router]);
 
@@ -17,7 +16,7 @@ export default function AuthLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        animation: "slide_from_right",
+        animation: "fade"
       }}
     />
   );

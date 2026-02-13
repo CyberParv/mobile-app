@@ -1,19 +1,20 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import { Animated, Platform, Pressable, Text, View } from "react-native";
-
+import { Ionicons } from "@expo/vector-icons";
 import { cn } from "@/lib/utils";
 
 type ToastVariant = "success" | "error" | "warning" | "info";
 
 type Toast = {
   id: string;
-  variant: ToastVariant;
   title: string;
   message?: string;
+  variant: ToastVariant;
+  createdAt: number;
 };
 
 type ToastContextValue = {
-  show: (variant: ToastVariant, title: string, message?: string) => void;
+  show: (opts: { title: string; message?: string; variant?: ToastVariant; durationMs?: number }) => void;
   success: (title: string, message?: string) => void;
   error: (title: string, message?: string) => void;
   warning: (title: string, message?: string) => void;
@@ -22,90 +23,96 @@ type ToastContextValue = {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-function variantClasses(variant: ToastVariant) {
+function variantStyles(variant: ToastVariant) {
   switch (variant) {
     case "success":
-      return "bg-emerald-600";
+      return { bg: "bg-emerald-600", icon: "checkmark-circle" as const };
     case "error":
-      return "bg-red-600";
+      return { bg: "bg-red-600", icon: "close-circle" as const };
     case "warning":
-      return "bg-amber-600";
+      return { bg: "bg-amber-600", icon: "warning" as const };
     default:
-      return "bg-slate-900";
+      return { bg: "bg-sky-600", icon: "information-circle" as const };
   }
 }
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const [toast, setToast] = useState<Toast | null>(null);
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(-10)).current;
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const hide = useCallback(() => {
-    if (timer.current) {
-      clearTimeout(timer.current);
-      timer.current = null;
-    }
-
-    Animated.parallel([
-      Animated.timing(opacity, { toValue: 0, duration: 160, useNativeDriver: Platform.OS !== "web" }),
-      Animated.timing(translateY, { toValue: -10, duration: 160, useNativeDriver: Platform.OS !== "web" }),
-    ]).start(({ finished }) => {
-      if (finished) setToast(null);
-    });
-  }, [opacity, translateY]);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const anim = useRef(new Animated.Value(0)).current;
 
   const show = useCallback(
-    (variant: ToastVariant, title: string, message?: string) => {
+    ({ title, message, variant = "info", durationMs = 3000 }: { title: string; message?: string; variant?: ToastVariant; durationMs?: number }) => {
       const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      setToast({ id, variant, title, message });
+      const toast: Toast = { id, title, message, variant, createdAt: Date.now() };
 
-      Animated.parallel([
-        Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: Platform.OS !== "web" }),
-        Animated.timing(translateY, { toValue: 0, duration: 180, useNativeDriver: Platform.OS !== "web" }),
-      ]).start();
+      setToasts((prev) => [toast, ...prev].slice(0, 3));
 
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(hide, 3200);
+      Animated.timing(anim, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: Platform.OS !== "web"
+      }).start();
+
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, durationMs);
     },
-    [hide, opacity, translateY]
+    [anim]
   );
 
-  const value = useMemo<ToastContextValue>(
+  const api = useMemo<ToastContextValue>(
     () => ({
       show,
-      success: (t, m) => show("success", t, m),
-      error: (t, m) => show("error", t, m),
-      warning: (t, m) => show("warning", t, m),
-      info: (t, m) => show("info", t, m),
+      success: (title, message) => show({ title, message, variant: "success" }),
+      error: (title, message) => show({ title, message, variant: "error" }),
+      warning: (title, message) => show({ title, message, variant: "warning" }),
+      info: (title, message) => show({ title, message, variant: "info" })
     }),
     [show]
   );
 
+  const dismiss = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
   return (
-    <ToastContext.Provider value={value}>
+    <ToastContext.Provider value={api}>
       {children}
-      {toast ? (
-        <View pointerEvents="box-none" className="absolute left-0 right-0 top-0">
-          <Animated.View
-            style={{ opacity, transform: [{ translateY }] }}
-            className={cn(
-              "mx-4 mt-12 rounded-2xl px-4 py-3",
-              variantClasses(toast.variant)
-            )}
-          >
-            <Pressable onPress={hide} className="flex-row items-start">
-              <View className="flex-1">
-                <Text className="text-white font-semibold">{toast.title}</Text>
-                {toast.message ? (
-                  <Text className="text-white/90 mt-1">{toast.message}</Text>
-                ) : null}
-              </View>
-              <Text className="text-white/90 ml-3">✕</Text>
-            </Pressable>
-          </Animated.View>
-        </View>
-      ) : null}
+      <View pointerEvents="box-none" className="absolute left-0 right-0 top-0 z-50">
+        <Animated.View
+          style={{
+            opacity: anim,
+            transform: [
+              {
+                translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] })
+              }
+            ]
+          }}
+          className="px-4 pt-12"
+          pointerEvents="box-none"
+        >
+          {toasts.map((t) => {
+            const vs = variantStyles(t.variant);
+            return (
+              <Pressable
+                key={t.id}
+                onPress={() => dismiss(t.id)}
+                className={cn(
+                  "mb-2 flex-row items-start rounded-2xl px-4 py-3 shadow",
+                  vs.bg
+                )}
+              >
+                <Ionicons name={vs.icon} size={20} color="white" style={{ marginTop: 2 }} />
+                <View className="ml-3 flex-1">
+                  <Text className="text-base font-semibold text-white">{t.title}</Text>
+                  {!!t.message && <Text className="mt-0.5 text-sm text-white/90">{t.message}</Text>}
+                </View>
+                <Ionicons name="close" size={18} color="white" style={{ marginTop: 2, opacity: 0.9 }} />
+              </Pressable>
+            );
+          })}
+        </Animated.View>
+      </View>
     </ToastContext.Provider>
   );
 }

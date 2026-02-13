@@ -1,9 +1,6 @@
-import { Tabs, useRouter } from "expo-router";
 import React, { useEffect } from "react";
-import { Platform } from "react-native";
+import { Tabs, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-
-import { colors } from "@/constants/colors";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function TabsLayout() {
@@ -11,28 +8,25 @@ export default function TabsLayout() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) router.replace("/(auth)/login");
+    if (!isLoading && !isAuthenticated) router.replace("/(auth)/login" as any);
   }, [isAuthenticated, isLoading, router]);
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.brand[600],
-        tabBarInactiveTintColor: colors.slate[500],
+        tabBarActiveTintColor: "#6366F1",
+        tabBarInactiveTintColor: "#64748B",
         tabBarStyle: {
-          backgroundColor: Platform.OS === "web" ? "#FFFFFF" : undefined,
-          borderTopColor: "rgba(148,163,184,0.25)",
-        },
+          borderTopColor: "#E2E8F0"
+        }
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" color={color} size={size} />
-          ),
+          tabBarIcon: ({ color, size }) => <Ionicons name="home" color={color} size={size} />
         }}
       />
     </Tabs>

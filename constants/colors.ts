@@ -1,4 +1,24 @@
 export const colors = {
+  bg: {
+    light: "#FFFFFF",
+    dark: "#0B1220"
+  },
+  surface: {
+    light: "#F8FAFC",
+    dark: "#111827"
+  },
+  text: {
+    light: "#0F172A",
+    dark: "#E5E7EB"
+  },
+  muted: {
+    light: "#64748B",
+    dark: "#9CA3AF"
+  },
+  border: {
+    light: "#E2E8F0",
+    dark: "#1F2937"
+  },
   brand: {
     50: "#EEF2FF",
     100: "#E0E7FF",
@@ -11,28 +31,10 @@ export const colors = {
     800: "#3730A3",
     900: "#312E81"
   },
-  slate: {
-    50: "#F8FAFC",
-    100: "#F1F5F9",
-    200: "#E2E8F0",
-    300: "#CBD5E1",
-    400: "#94A3B8",
-    500: "#64748B",
-    600: "#475569",
-    700: "#334155",
-    800: "#1E293B",
-    900: "#0F172A"
-  },
-  red: {
-    50: "#FEF2F2",
-    100: "#FEE2E2",
-    200: "#FECACA",
-    300: "#FCA5A5",
-    400: "#F87171",
-    500: "#EF4444",
-    600: "#DC2626",
-    700: "#B91C1C",
-    800: "#991B1B",
-    900: "#7F1D1D"
-  }
+  success: "#16A34A",
+  warning: "#F59E0B",
+  danger: "#DC2626",
+  info: "#0EA5E9"
 } as const;
+
+export type AppColors = typeof colors;

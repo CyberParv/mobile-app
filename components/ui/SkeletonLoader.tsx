@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect } from "react";
 import { View, ViewStyle } from "react-native";
 import Animated, {
   Easing,
@@ -6,9 +6,8 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
-  withTiming,
+  withTiming
 } from "react-native-reanimated";
-
 import { cn } from "@/lib/utils";
 
 export type SkeletonLoaderProps = {
@@ -19,13 +18,7 @@ export type SkeletonLoaderProps = {
   style?: ViewStyle;
 };
 
-export function SkeletonLoader({
-  width = "100%",
-  height = 12,
-  radius = 10,
-  className,
-  style,
-}: SkeletonLoaderProps) {
+export function SkeletonLoader({ width = "100%", height = 12, radius = 12, className, style }: SkeletonLoaderProps) {
   const progress = useSharedValue(0);
 
   useEffect(() => {
@@ -36,24 +29,17 @@ export function SkeletonLoader({
     );
   }, [progress]);
 
-  const animatedStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(progress.value, [0, 1], [0.45, 0.9]);
+  const shimmerStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(progress.value, [0, 1], [0.35, 0.75]);
     return { opacity };
   });
 
-  const baseStyle = useMemo(
-    () => ({
-      width,
-      height,
-      borderRadius: radius,
-    }),
-    [height, radius, width]
-  );
-
   return (
-    <Animated.View
-      style={[baseStyle, animatedStyle, style]}
+    <View
+      style={[{ width, height, borderRadius: radius, overflow: "hidden" }, style]}
       className={cn("bg-slate-200 dark:bg-slate-800", className)}
-    />
+    >
+      <Animated.View style={[{ flex: 1, backgroundColor: "#FFFFFF" }, shimmerStyle]} />
+    </View>
   );
 }
