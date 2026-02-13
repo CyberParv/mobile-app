@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { View, ViewStyle } from "react-native";
+import React, { useEffect } from 'react';
+import { View, ViewProps } from 'react-native';
 import Animated, {
   Easing,
   interpolate,
@@ -7,18 +7,16 @@ import Animated, {
   useSharedValue,
   withRepeat,
   withTiming
-} from "react-native-reanimated";
-import { cn } from "@/lib/utils";
+} from 'react-native-reanimated';
+
+import { cn } from '@/lib/utils';
 
 export type SkeletonLoaderProps = {
-  width?: number | string;
-  height?: number;
-  radius?: number;
   className?: string;
-  style?: ViewStyle;
-};
+  rounded?: 'sm' | 'md' | 'lg' | 'full';
+} & Omit<ViewProps, 'children'>;
 
-export function SkeletonLoader({ width = "100%", height = 12, radius = 12, className, style }: SkeletonLoaderProps) {
+export function SkeletonLoader({ className, rounded = 'md', style, ...props }: SkeletonLoaderProps) {
   const progress = useSharedValue(0);
 
   useEffect(() => {
@@ -29,17 +27,27 @@ export function SkeletonLoader({ width = "100%", height = 12, radius = 12, class
     );
   }, [progress]);
 
-  const shimmerStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(progress.value, [0, 1], [0.35, 0.75]);
+  const animatedStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(progress.value, [0, 1], [0.45, 0.9]);
     return { opacity };
   });
 
+  const roundedClass =
+    rounded === 'sm'
+      ? 'rounded-md'
+      : rounded === 'lg'
+        ? 'rounded-2xl'
+        : rounded === 'full'
+          ? 'rounded-full'
+          : 'rounded-xl';
+
   return (
     <View
-      style={[{ width, height, borderRadius: radius, overflow: "hidden" }, style]}
-      className={cn("bg-slate-200 dark:bg-slate-800", className)}
+      className={cn('overflow-hidden bg-border/60', roundedClass, className)}
+      style={style}
+      {...props}
     >
-      <Animated.View style={[{ flex: 1, backgroundColor: "#FFFFFF" }, shimmerStyle]} />
+      <Animated.View className="absolute inset-0 bg-white/10" style={animatedStyle} />
     </View>
   );
 }

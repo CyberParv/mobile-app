@@ -1,14 +1,8 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const prefix = "app:";
-
-function k(key: string) {
-  return `${prefix}${key}`;
-}
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const storage = {
   async get<T>(key: string): Promise<T | null> {
-    const raw = await AsyncStorage.getItem(k(key));
+    const raw = await AsyncStorage.getItem(key);
     if (!raw) return null;
     try {
       return JSON.parse(raw) as T;
@@ -16,10 +10,12 @@ export const storage = {
       return null;
     }
   },
+
   async set<T>(key: string, value: T): Promise<void> {
-    await AsyncStorage.setItem(k(key), JSON.stringify(value));
+    await AsyncStorage.setItem(key, JSON.stringify(value));
   },
+
   async remove(key: string): Promise<void> {
-    await AsyncStorage.removeItem(k(key));
+    await AsyncStorage.removeItem(key);
   }
 };

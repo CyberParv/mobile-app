@@ -1,48 +1,41 @@
-import React from "react";
-import { Text, View } from "react-native";
-import { Button, Card, Avatar } from "@/components/ui";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/providers/ToastProvider";
+import React from 'react';
+import { Text, View } from 'react-native';
+
+import { Button, Card, Avatar } from '@/components/ui';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function HomeScreen() {
-  const { user, logout } = useAuth();
-  const toast = useToast();
-
-  const onLogout = async () => {
-    try {
-      await logout();
-      toast.info("Signed out", "You have been logged out.");
-    } catch {
-      toast.error("Logout failed", "Please try again.");
-    }
-  };
+  const { user, logout, isLoading } = useAuth();
 
   return (
-    <View className="flex-1 bg-slate-50 px-5 pt-16 dark:bg-slate-950">
+    <View className="flex-1 bg-background px-5 pt-14">
       <View className="flex-row items-center justify-between">
-        <View>
-          <Text className="text-sm text-slate-600 dark:text-slate-300">Welcome</Text>
-          <Text className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">{user?.name ?? "User"}</Text>
+        <View className="flex-row items-center">
+          <Avatar name={user?.name ?? user?.email ?? 'User'} size="md" />
+          <View className="ml-3">
+            <Text className="text-sm text-muted">Welcome</Text>
+            <Text className="text-xl font-semibold text-foreground">
+              {user?.name ?? user?.email ?? '—'}
+            </Text>
+          </View>
         </View>
-        <Avatar name={user?.name ?? user?.email} size="md" />
       </View>
 
-      <Card className="mt-6">
-        <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">Dashboard</Text>
-        <Text className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          This scaffold includes auth, theming, toasts, and a production-ready UI foundation.
+      <Card className="mt-6 p-4">
+        <Text className="text-base font-semibold text-foreground">Dashboard</Text>
+        <Text className="mt-2 text-sm text-muted">
+          This is a production-ready Expo Router scaffold with auth, theming, toasts, and a UI kit.
         </Text>
-        <View className="mt-4">
-          <Button variant="outline" onPress={onLogout}>
-            Logout
-          </Button>
-        </View>
-      </Card>
 
-      <Card className="mt-4">
-        <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">Account</Text>
-        <Text className="mt-2 text-sm text-slate-600 dark:text-slate-300">Email: {user?.email ?? "—"}</Text>
-        <Text className="mt-1 text-sm text-slate-600 dark:text-slate-300">ID: {user?.id ?? "—"}</Text>
+        <Button
+          className="mt-4"
+          variant="outline"
+          size="md"
+          loading={isLoading}
+          onPress={logout}
+        >
+          Log out
+        </Button>
       </Card>
     </View>
   );

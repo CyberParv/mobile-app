@@ -9,8 +9,6 @@ export const sanitize = (req: Request, res: Response, next: NextFunction) => {
     for (const key in obj) {
       if (typeof obj[key] === 'string') {
         obj[key] = sanitizeString(obj[key]);
-      } else if (typeof obj[key] === 'object' && obj[key] !== null) {
-        sanitizeObject(obj[key]);
       }
     }
   };

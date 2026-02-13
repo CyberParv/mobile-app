@@ -1,8 +1,10 @@
-import React from "react";
-import { Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { Button } from "@/components/ui/Button";
-import { cn } from "@/lib/utils";
+import React from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { Text, View } from 'react-native';
+
+import { Button } from './Button';
+import { colors } from '@/constants/colors';
+import { cn } from '@/lib/utils';
 
 export type ErrorViewProps = {
   message?: string;
@@ -10,21 +12,21 @@ export type ErrorViewProps = {
   className?: string;
 };
 
-export function ErrorView({ message = "Something went wrong.", onRetry, className }: ErrorViewProps) {
+export function ErrorView({ message, onRetry, className }: ErrorViewProps) {
   return (
-    <View className={cn("items-center justify-center p-6", className)}>
-      <View className="h-12 w-12 items-center justify-center rounded-2xl bg-red-50 dark:bg-red-950/30">
-        <Ionicons name="alert-circle" size={22} color="#DC2626" />
-      </View>
-      <Text className="mt-4 text-center text-lg font-semibold text-slate-900 dark:text-slate-100">Error</Text>
-      <Text className="mt-2 text-center text-sm text-slate-600 dark:text-slate-300">{message}</Text>
-      {!!onRetry && (
-        <View className="mt-5 w-full">
-          <Button variant="outline" onPress={onRetry}>
-            Retry
-          </Button>
-        </View>
-      )}
+    <View className={cn('flex-1 items-center justify-center px-6 py-10', className)}>
+      <Ionicons name="alert-circle" size={44} color={colors.destructive} />
+      <Text className="mt-4 text-lg font-semibold text-foreground text-center">
+        Something went wrong
+      </Text>
+      <Text className="mt-2 text-sm text-muted text-center">
+        {message ?? 'Please try again. If the problem persists, contact support.'}
+      </Text>
+      {onRetry ? (
+        <Button className="mt-5" variant="outline" size="md" onPress={onRetry}>
+          Retry
+        </Button>
+      ) : null}
     </View>
   );
 }

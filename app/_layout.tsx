@@ -1,87 +1,94 @@
-import "../global.css";
+import '../global.css';
 
-import React, { useEffect, useMemo, useState } from "react";
-import { Platform, View } from "react-native";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import * as SplashScreen from "expo-splash-screen";
-import * as Linking from "expo-linking";
-import { Slot, useRouter } from "expo-router";
+import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import * as Linking from 'expo-linking';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Platform, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { AuthProvider } from "@/providers/AuthProvider";
-import { ToastProvider } from "@/providers/ToastProvider";
-import { ThemeProvider, useTheme } from "@/providers/ThemeProvider";
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { AuthProvider } from '@/providers/AuthProvider';
+import { ThemeProvider } from '@/providers/ThemeProvider';
+import { ToastProvider } from '@/providers/ToastProvider';
 
-SplashScreen.preventAutoHideAsync().catch(() => undefined);
+SplashScreen.preventAutoHideAsync().catch(() => {
+  // ignore if already prevented
+});
 
 function RootContainer({ children }: { children: React.ReactNode }) {
-  const { className } = useTheme();
-  return <View className={className} style={{ flex: 1 }}>{children}</View>;
+  if (Platform.OS !== 'web') {
+    return <GestureHandlerRootView style={{ flex: 1 }}>{children}</GestureHandlerRootView>;
+  }
+  return <View style={{ flex: 1 }}>{children}</View>;
 }
 
 export default function RootLayout() {
-  const router = useRouter();
-  const [ready, setReady] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
-
-    async function prepare() {
-      // Place for font loading if needed.
-      // Keep splash until providers mount and first paint.
-      await new Promise((r) => setTimeout(r, 50));
-      if (mounted) setReady(true);
-    }
-
-    prepare();
-
-    return () => {
-      mounted = false;
-    };
+  const onReady = useCallback(async () => {
+    // In production apps, this is where you'd await font loading, remote config, etc.
+    // AuthProvider handles its own bootstrap; we just ensure at least one tick.
+    setIsReady(true);
+    await SplashScreen.hideAsync();
   }, []);
 
   useEffect(() => {
-    if (!ready) return;
-    SplashScreen.hideAsync().catch(() => undefined);
-  }, [ready]);
+    let mounted = true;
+    (async () => {
+      try {
+        // Allow providers to mount before hiding splash.
+        await new Promise((r) => setTimeout(r, 0));
+      } finally {
+        if (mounted) {
+          onReady();
+        }
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [onReady]);
 
   useEffect(() => {
-    if (Platform.OS === "web") return;
+    if (Platform.OS === 'web') return;
 
-    const sub = Linking.addEventListener("url", (event) => {
-      const url = event.url;
-      // Example: exposcaffold://path
-      const parsed = Linking.parse(url);
-      const path = parsed.path ? `/${parsed.path}` : "/";
-      // Only navigate if it looks like an internal route.
-      if (path.startsWith("/")) {
-        router.push(path as any);
-      }
+    const sub = Linking.addEventListener('url', (event) => {
+      // Expo Router handles deep links automatically; this is here for side-effects/analytics.
+      // Keep minimal and safe.
+      void event.url;
     });
 
     return () => {
       sub.remove();
     };
-  }, [router]);
+  }, []);
 
-  const Wrapper = useMemo(() => (Platform.OS !== "web" ? GestureHandlerRootView : View), []);
+  const stackScreenOptions = useMemo(
+    () => ({
+      headerShown: false,
+      animation: 'fade' as const
+    }),
+    []
+  );
 
   return (
     <ErrorBoundary>
-      <SafeAreaProvider>
-        <ThemeProvider>
-          <ToastProvider>
-            <AuthProvider>
-              <Wrapper style={{ flex: 1 }}>
-                <RootContainer>
-                  <Slot />
-                </RootContainer>
-              </Wrapper>
-            </AuthProvider>
-          </ToastProvider>
-        </ThemeProvider>
-      </SafeAreaProvider>
+      <RootContainer>
+        <SafeAreaProvider>
+          <ThemeProvider>
+            <ToastProvider>
+              <AuthProvider>
+                {/* Keep rendering even while splash is visible; SplashScreen controls visibility */}
+                <Stack screenOptions={stackScreenOptions} />
+                {/* Ensure we don't block rendering on web */}
+                {Platform.OS === 'web' && !isReady ? null : null}
+              </AuthProvider>
+            </ToastProvider>
+          </ThemeProvider>
+        </SafeAreaProvider>
+      </RootContainer>
     </ErrorBoundary>
   );
 }

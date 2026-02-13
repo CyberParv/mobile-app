@@ -1,6 +1,7 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import api from "@/lib/api";
-import { getSecureItem, removeSecureItem, setSecureItem } from "@/lib/secureStorage";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+
+import api from '@/lib/api';
+import { getSecureItem, removeSecureItem, setSecureItem } from '@/lib/secureStorage';
 
 export type User = {
   id: string;
@@ -13,7 +14,7 @@ type Tokens = {
   refreshToken: string;
 };
 
-type AuthContextValue = {
+type AuthContextType = {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -22,113 +23,102 @@ type AuthContextValue = {
   logout: () => Promise<void>;
 };
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+export const AuthContext = createContext<AuthContextType | null>(null);
 
-async function clearTokens() {
-  await Promise.all([removeSecureItem("accessToken"), removeSecureItem("refreshToken")]);
+async function persistTokens(tokens: Tokens) {
+  await Promise.all([
+    setSecureItem('accessToken', tokens.accessToken),
+    setSecureItem('refreshToken', tokens.refreshToken)
+  ]);
 }
 
-async function storeTokens(tokens: Tokens) {
-  await Promise.all([
-    setSecureItem("accessToken", tokens.accessToken),
-    setSecureItem("refreshToken", tokens.refreshToken)
-  ]);
+async function clearTokens() {
+  await Promise.all([removeSecureItem('accessToken'), removeSecureItem('refreshToken')]);
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const mountedRef = useRef(true);
 
   const isAuthenticated = !!user;
 
   const login = useCallback(async (email: string, password: string) => {
-    const res = await api.post("/auth/login", { email, password });
-    // axios interceptor unwraps -> res is { success, data }
+    const res: any = await api.post('/auth/login', { email, password });
+    // Response already unwrapped by axios interceptor: { success, data }
     const nextUser = res.data.user as User;
     const tokens = res.data.tokens as Tokens;
-    await storeTokens(tokens);
-    if (mountedRef.current) setUser(nextUser);
+
+    await persistTokens(tokens);
+    setUser(nextUser);
   }, []);
 
   const signup = useCallback(async (email: string, password: string, name: string) => {
-    const res = await api.post("/auth/signup", { email, password, name });
+    const res: any = await api.post('/auth/signup', { email, password, name });
     const nextUser = res.data.user as User;
     const tokens = res.data.tokens as Tokens;
-    await storeTokens(tokens);
-    if (mountedRef.current) setUser(nextUser);
+
+    await persistTokens(tokens);
+    setUser(nextUser);
   }, []);
 
   const logout = useCallback(async () => {
     try {
-      await api.post("/auth/logout");
+      await api.post('/auth/logout');
     } catch {
-      // ignore network errors; still clear local state
+      // ignore network/server errors; still clear local session
     } finally {
       await clearTokens();
-      if (mountedRef.current) setUser(null);
+      setUser(null);
     }
   }, []);
 
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function bootstrap() {
-      setIsLoading(true);
-      try {
-        const accessToken = await getSecureItem("accessToken");
-        if (!accessToken) {
-          if (!cancelled && mountedRef.current) setUser(null);
-          return;
-        }
-
-        try {
-          const res = await api.get("/auth/me");
-          // /auth/me returns { success: true, data: { id, email, name } }
-          const me = res.data as User;
-          if (!cancelled && mountedRef.current) setUser(me);
-        } catch (err: any) {
-          const code = err?.response?.data?.error?.code;
-          if (err?.response?.status === 401 && code === "AUTH_TOKEN_EXPIRED") {
-            // api interceptor will attempt refresh and retry for most requests,
-            // but /auth/me may still fail depending on server behavior.
-            // Try once more after interceptor logic.
-            try {
-              const res2 = await api.get("/auth/me");
-              const me2 = res2.data as User;
-              if (!cancelled && mountedRef.current) setUser(me2);
-              return;
-            } catch {
-              await clearTokens();
-              if (!cancelled && mountedRef.current) setUser(null);
-              return;
-            }
-          }
-
-          await clearTokens();
-          if (!cancelled && mountedRef.current) setUser(null);
-        }
-      } finally {
-        if (!cancelled && mountedRef.current) setIsLoading(false);
+  const bootstrap = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const accessToken = await getSecureItem('accessToken');
+      if (!accessToken) {
+        setUser(null);
+        return;
       }
+
+      try {
+        const res: any = await api.get('/auth/me');
+        // /auth/me returns { success: true, data: { id, email, name } }
+        setUser(res.data as User);
+      } catch (e: any) {
+        const code = e?.response?.data?.error?.code;
+        if (e?.response?.status === 401 && code === 'AUTH_TOKEN_EXPIRED') {
+          // api.ts interceptor should refresh+retry, but keep a defensive fallback.
+          try {
+            const res: any = await api.get('/auth/me');
+            setUser(res.data as User);
+          } catch {
+            await clearTokens();
+            setUser(null);
+          }
+        } else {
+          await clearTokens();
+          setUser(null);
+        }
+      }
+    } finally {
+      setIsLoading(false);
     }
-
-    bootstrap();
-
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
-  const value = useMemo<AuthContextValue>(
-    () => ({ user, isAuthenticated, isLoading, login, signup, logout }),
+  useEffect(() => {
+    void bootstrap();
+  }, [bootstrap]);
+
+  const value = useMemo<AuthContextType>(
+    () => ({
+      user,
+      isAuthenticated,
+      isLoading,
+      login,
+      signup,
+      logout
+    }),
     [user, isAuthenticated, isLoading, login, signup, logout]
   );
 
@@ -137,6 +127,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  if (!ctx) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
   return ctx;
 }

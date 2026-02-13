@@ -1,10 +1,10 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}
-
-generator client {
-  provider = "prisma-client-js"
 }
 
 model User {
@@ -14,29 +14,19 @@ model User {
   name          String
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-  entities      Entity[]
   refreshTokens RefreshToken[]
-}
-
-model Entity {
-  id        String   @id @default(uuid())
-  name      String
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
+  @@index([email])
 }
 
 model RefreshToken {
   id        String   @id @default(uuid())
   token     String
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
   expiresAt DateTime
   revokedAt DateTime?
   createdAt DateTime @default(now())
-
+  user      User     @relation(fields: [userId], references: [id])
   @@index([userId])
 }
+
+// Add other entity models here

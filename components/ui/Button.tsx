@@ -1,127 +1,120 @@
-import React, { ReactNode, useMemo, useRef } from "react";
-import { ActivityIndicator, Animated, Platform, Pressable, Text, ViewStyle } from "react-native";
-import { cn } from "@/lib/utils";
+import React, { ReactNode, useMemo, useRef } from 'react';
+import {
+  ActivityIndicator,
+  Animated,
+  Platform,
+  Pressable,
+  PressableProps,
+  Text,
+  View
+} from 'react-native';
 
-type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "destructive";
-type ButtonSize = "sm" | "md" | "lg";
+import { cn } from '@/lib/utils';
+import { colors } from '@/constants/colors';
 
-export type ButtonProps = {
+type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive';
+type ButtonSize = 'sm' | 'md' | 'lg';
+
+export type ButtonProps = Omit<PressableProps, 'children'> & {
   children: ReactNode;
-  onPress?: () => void;
-  disabled?: boolean;
-  loading?: boolean;
   variant?: ButtonVariant;
   size?: ButtonSize;
+  loading?: boolean;
   className?: string;
-  testID?: string;
 };
-
-function variantClasses(variant: ButtonVariant, disabled?: boolean) {
-  const base = disabled ? "opacity-60" : "";
-  switch (variant) {
-    case "secondary":
-      return cn(base, "bg-slate-200 dark:bg-slate-800");
-    case "outline":
-      return cn(base, "bg-transparent border border-slate-300 dark:border-slate-700");
-    case "ghost":
-      return cn(base, "bg-transparent");
-    case "destructive":
-      return cn(base, "bg-red-600");
-    default:
-      return cn(base, "bg-brand-600");
-  }
-}
-
-function textClasses(variant: ButtonVariant) {
-  switch (variant) {
-    case "secondary":
-      return "text-slate-900 dark:text-slate-100";
-    case "outline":
-      return "text-slate-900 dark:text-slate-100";
-    case "ghost":
-      return "text-brand-700 dark:text-brand-300";
-    case "destructive":
-      return "text-white";
-    default:
-      return "text-white";
-  }
-}
-
-function sizeClasses(size: ButtonSize) {
-  switch (size) {
-    case "sm":
-      return "h-10 px-3";
-    case "lg":
-      return "h-14 px-5";
-    default:
-      return "h-12 px-4";
-  }
-}
 
 export function Button({
   children,
-  onPress,
+  variant = 'primary',
+  size = 'md',
+  loading = false,
   disabled,
-  loading,
-  variant = "primary",
-  size = "md",
   className,
-  testID
+  ...props
 }: ButtonProps) {
   const scale = useRef(new Animated.Value(1)).current;
 
-  const spinnerColor = useMemo(() => {
-    if (variant === "secondary" || variant === "outline") return Platform.OS === "web" ? "#0F172A" : undefined;
-    return "white";
-  }, [variant]);
-
-  const pressIn = () => {
-    Animated.spring(scale, {
-      toValue: 0.98,
-      useNativeDriver: Platform.OS !== "web",
-      speed: 30,
-      bounciness: 0
-    }).start();
-  };
-
-  const pressOut = () => {
-    Animated.spring(scale, {
-      toValue: 1,
-      useNativeDriver: Platform.OS !== "web",
-      speed: 30,
-      bounciness: 6
-    }).start();
-  };
-
   const isDisabled = disabled || loading;
 
-  const animatedStyle: ViewStyle = {
-    transform: [{ scale }]
-  };
+  const sizeClasses = useMemo(() => {
+    switch (size) {
+      case 'sm':
+        return 'h-10 px-3';
+      case 'lg':
+        return 'h-14 px-5';
+      case 'md':
+      default:
+        return 'h-12 px-4';
+    }
+  }, [size]);
+
+  const variantClasses = useMemo(() => {
+    switch (variant) {
+      case 'secondary':
+        return 'bg-card border border-border';
+      case 'outline':
+        return 'bg-transparent border border-border';
+      case 'ghost':
+        return 'bg-transparent';
+      case 'destructive':
+        return 'bg-destructive';
+      case 'primary':
+      default:
+        return 'bg-primary';
+    }
+  }, [variant]);
+
+  const textClasses = useMemo(() => {
+    const base = 'font-semibold';
+    if (variant === 'outline' || variant === 'ghost' || variant === 'secondary') {
+      return cn(base, 'text-foreground');
+    }
+    return cn(base, 'text-white');
+  }, [variant]);
+
+  function animateTo(toValue: number) {
+    Animated.spring(scale, {
+      toValue,
+      useNativeDriver: Platform.OS !== 'web',
+      speed: 20,
+      bounciness: 6
+    }).start();
+  }
 
   return (
-    <Animated.View style={animatedStyle}>
-      <Pressable
-        testID={testID}
-        onPress={onPress}
-        disabled={isDisabled}
-        onPressIn={pressIn}
-        onPressOut={pressOut}
+    <Pressable
+      accessibilityRole="button"
+      disabled={isDisabled}
+      onPressIn={(e) => {
+        animateTo(0.98);
+        props.onPressIn?.(e);
+      }}
+      onPressOut={(e) => {
+        animateTo(1);
+        props.onPressOut?.(e);
+      }}
+      className={cn('rounded-xl overflow-hidden', className)}
+      {...props}
+    >
+      <Animated.View
+        style={{ transform: [{ scale }], opacity: isDisabled ? 0.7 : 1 }}
         className={cn(
-          "w-full flex-row items-center justify-center rounded-2xl",
-          sizeClasses(size),
-          variantClasses(variant, isDisabled),
-          className
+          'w-full flex-row items-center justify-center rounded-xl',
+          sizeClasses,
+          variantClasses
         )}
-        accessibilityRole="button"
-        accessibilityState={{ disabled: isDisabled, busy: !!loading }}
       >
         {loading ? (
-          <ActivityIndicator color={spinnerColor} />
+          <View className="flex-row items-center">
+            <ActivityIndicator
+              color={variant === 'primary' || variant === 'destructive' ? '#FFFFFF' : colors.primary}
+            />
+            <Text className={cn('ml-2', textClasses)}>{children}</Text>
+          </View>
         ) : (
-          <Text className={cn("text-base font-semibold", textClasses(variant))}>{children}</Text>
+          <Text className={textClasses}>{children}</Text>
         )}
-      </Pressable>
-    </Animated.View>
+      </Animated.View>
+    </Pressable>
   );
 }

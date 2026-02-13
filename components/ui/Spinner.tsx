@@ -1,24 +1,27 @@
-import React from "react";
-import { ActivityIndicator, Platform } from "react-native";
+import React, { useMemo } from 'react';
+import { ActivityIndicator, ActivityIndicatorProps } from 'react-native';
 
-type SpinnerSize = "sm" | "md" | "lg";
+import { colors } from '@/constants/colors';
 
-export type SpinnerProps = {
+type SpinnerSize = 'sm' | 'md' | 'lg';
+
+export type SpinnerProps = Omit<ActivityIndicatorProps, 'size' | 'color'> & {
   size?: SpinnerSize;
   color?: string;
 };
 
-function mapSize(size: SpinnerSize) {
-  switch (size) {
-    case "sm":
-      return Platform.OS === "web" ? 16 : "small";
-    case "lg":
-      return Platform.OS === "web" ? 28 : "large";
-    default:
-      return Platform.OS === "web" ? 22 : "small";
-  }
-}
+export function Spinner({ size = 'md', color, ...props }: SpinnerProps) {
+  const resolvedSize = useMemo(() => {
+    switch (size) {
+      case 'sm':
+        return 'small' as const;
+      case 'lg':
+        return 'large' as const;
+      case 'md':
+      default:
+        return 'small' as const;
+    }
+  }, [size]);
 
-export function Spinner({ size = "md", color }: SpinnerProps) {
-  return <ActivityIndicator size={mapSize(size) as any} color={color ?? "#6366F1"} />;
+  return <ActivityIndicator size={resolvedSize} color={color ?? colors.primary} {...props} />;
 }

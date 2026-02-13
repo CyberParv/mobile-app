@@ -1,19 +1,21 @@
-import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
-import { Animated, Platform, Pressable, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { cn } from "@/lib/utils";
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import { Animated, Platform, Pressable, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
-type ToastVariant = "success" | "error" | "warning" | "info";
+import { cn } from '@/lib/utils';
+import { colors } from '@/constants/colors';
+
+type ToastVariant = 'success' | 'error' | 'warning' | 'info';
 
 type Toast = {
   id: string;
   title: string;
   message?: string;
   variant: ToastVariant;
-  createdAt: number;
+  durationMs: number;
 };
 
-type ToastContextValue = {
+type ToastContextType = {
   show: (opts: { title: string; message?: string; variant?: ToastVariant; durationMs?: number }) => void;
   success: (title: string, message?: string) => void;
   error: (title: string, message?: string) => void;
@@ -21,104 +23,111 @@ type ToastContextValue = {
   info: (title: string, message?: string) => void;
 };
 
-const ToastContext = createContext<ToastContextValue | null>(null);
+const ToastContext = createContext<ToastContextType | null>(null);
 
-function variantStyles(variant: ToastVariant) {
+function variantMeta(variant: ToastVariant) {
   switch (variant) {
-    case "success":
-      return { bg: "bg-emerald-600", icon: "checkmark-circle" as const };
-    case "error":
-      return { bg: "bg-red-600", icon: "close-circle" as const };
-    case "warning":
-      return { bg: "bg-amber-600", icon: "warning" as const };
+    case 'success':
+      return { icon: 'checkmark-circle' as const, color: '#22C55E' };
+    case 'warning':
+      return { icon: 'warning' as const, color: '#F59E0B' };
+    case 'info':
+      return { icon: 'information-circle' as const, color: colors.primary };
+    case 'error':
     default:
-      return { bg: "bg-sky-600", icon: "information-circle" as const };
+      return { icon: 'close-circle' as const, color: colors.destructive };
   }
 }
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const anim = useRef(new Animated.Value(0)).current;
+  const [toast, setToast] = useState<Toast | null>(null);
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(-12)).current;
+  const timerRef = useRef<any>(null);
+
+  const hide = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 0, duration: 160, useNativeDriver: Platform.OS !== 'web' }),
+      Animated.timing(translateY, {
+        toValue: -12,
+        duration: 160,
+        useNativeDriver: Platform.OS !== 'web'
+      })
+    ]).start(({ finished }) => {
+      if (finished) setToast(null);
+    });
+  }, [opacity, translateY]);
 
   const show = useCallback(
-    ({ title, message, variant = "info", durationMs = 3000 }: { title: string; message?: string; variant?: ToastVariant; durationMs?: number }) => {
-      const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      const toast: Toast = { id, title, message, variant, createdAt: Date.now() };
+    (opts: { title: string; message?: string; variant?: ToastVariant; durationMs?: number }) => {
+      const next: Toast = {
+        id: String(Date.now()),
+        title: opts.title,
+        message: opts.message,
+        variant: opts.variant ?? 'info',
+        durationMs: opts.durationMs ?? 2800
+      };
 
-      setToasts((prev) => [toast, ...prev].slice(0, 3));
+      setToast(next);
+      opacity.setValue(0);
+      translateY.setValue(-12);
 
-      Animated.timing(anim, {
-        toValue: 1,
-        duration: 180,
-        useNativeDriver: Platform.OS !== "web"
-      }).start();
+      Animated.parallel([
+        Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(translateY, { toValue: 0, duration: 180, useNativeDriver: Platform.OS !== 'web' })
+      ]).start();
 
-      setTimeout(() => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, durationMs);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(hide, next.durationMs);
     },
-    [anim]
+    [hide, opacity, translateY]
   );
 
-  const api = useMemo<ToastContextValue>(
+  const value = useMemo<ToastContextType>(
     () => ({
       show,
-      success: (title, message) => show({ title, message, variant: "success" }),
-      error: (title, message) => show({ title, message, variant: "error" }),
-      warning: (title, message) => show({ title, message, variant: "warning" }),
-      info: (title, message) => show({ title, message, variant: "info" })
+      success: (title, message) => show({ title, message, variant: 'success' }),
+      error: (title, message) => show({ title, message, variant: 'error' }),
+      warning: (title, message) => show({ title, message, variant: 'warning' }),
+      info: (title, message) => show({ title, message, variant: 'info' })
     }),
     [show]
   );
 
-  const dismiss = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
+  const meta = toast ? variantMeta(toast.variant) : null;
 
   return (
-    <ToastContext.Provider value={api}>
+    <ToastContext.Provider value={value}>
       {children}
-      <View pointerEvents="box-none" className="absolute left-0 right-0 top-0 z-50">
-        <Animated.View
-          style={{
-            opacity: anim,
-            transform: [
-              {
-                translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] })
-              }
-            ]
-          }}
-          className="px-4 pt-12"
-          pointerEvents="box-none"
-        >
-          {toasts.map((t) => {
-            const vs = variantStyles(t.variant);
-            return (
-              <Pressable
-                key={t.id}
-                onPress={() => dismiss(t.id)}
-                className={cn(
-                  "mb-2 flex-row items-start rounded-2xl px-4 py-3 shadow",
-                  vs.bg
-                )}
-              >
-                <Ionicons name={vs.icon} size={20} color="white" style={{ marginTop: 2 }} />
-                <View className="ml-3 flex-1">
-                  <Text className="text-base font-semibold text-white">{t.title}</Text>
-                  {!!t.message && <Text className="mt-0.5 text-sm text-white/90">{t.message}</Text>}
-                </View>
-                <Ionicons name="close" size={18} color="white" style={{ marginTop: 2, opacity: 0.9 }} />
-              </Pressable>
-            );
-          })}
-        </Animated.View>
-      </View>
+      {toast ? (
+        <View pointerEvents="box-none" className="absolute left-0 right-0 top-0">
+          <Animated.View
+            style={{ opacity, transform: [{ translateY }] }}
+            className={cn('mx-4 mt-14 rounded-2xl border border-border bg-card px-4 py-3')}
+          >
+            <Pressable onPress={hide} className="flex-row items-start">
+              <Ionicons name={meta!.icon} size={20} color={meta!.color} />
+              <View className="ml-3 flex-1">
+                <Text className="text-sm font-semibold text-foreground">{toast.title}</Text>
+                {toast.message ? (
+                  <Text className="mt-1 text-xs text-muted">{toast.message}</Text>
+                ) : null}
+              </View>
+              <Ionicons name="close" size={18} color={colors.muted} />
+            </Pressable>
+          </Animated.View>
+        </View>
+      ) : null}
     </ToastContext.Provider>
   );
 }
 
 export function useToast() {
   const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error("useToast must be used within ToastProvider");
+  if (!ctx) throw new Error('useToast must be used within a ToastProvider');
   return ctx;
 }

@@ -7,7 +7,7 @@ export const ownership = (entity: string) => {
     const resource = await prisma[entity].findUnique({ where: { id: resourceId } });
 
     if (!resource || resource.userId !== req.user?.id) {
-      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have access to this resource.' } });
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You do not own this resource' } });
     }
 
     next();
