@@ -1,26 +1,35 @@
 import React, { ReactNode, useMemo, useRef } from "react";
 import {
   ActivityIndicator,
-  Animated,
   Platform,
   Pressable,
   PressableProps,
+  StyleProp,
   Text,
-  View,
+  ViewStyle,
 } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
+
 import { cn } from "@/lib/utils";
+import { colors } from "@/constants/colors";
 
 type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "destructive";
 type ButtonSize = "sm" | "md" | "lg";
 
-export type ButtonProps = PressableProps & {
+export type ButtonProps = Omit<PressableProps, "children"> & {
   children: ReactNode;
   variant?: ButtonVariant;
   size?: ButtonSize;
   loading?: boolean;
-  leftIcon?: ReactNode;
-  rightIcon?: ReactNode;
+  className?: string;
+  style?: StyleProp<ViewStyle>;
 };
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function Button({
   children,
@@ -28,105 +37,99 @@ export function Button({
   size = "md",
   loading = false,
   disabled,
-  leftIcon,
-  rightIcon,
   className,
+  style,
   ...props
 }: ButtonProps) {
-  const scale = useRef(new Animated.Value(1)).current;
-
+  const scale = useSharedValue(1);
   const isDisabled = disabled || loading;
 
-  const styles = useMemo(() => {
-    const base = "rounded-2xl flex-row items-center justify-center";
+  const paddingClass = useMemo(() => {
+    switch (size) {
+      case "sm":
+        return "px-3 py-2";
+      case "lg":
+        return "px-5 py-4";
+      default:
+        return "px-4 py-3";
+    }
+  }, [size]);
 
-    const sizeStyles: Record<ButtonSize, string> = {
-      sm: "h-10 px-3",
-      md: "h-12 px-4",
-      lg: "h-14 px-5",
-    };
+  const baseClass =
+    "rounded-xl flex-row items-center justify-center gap-2";
 
-    const variantStyles: Record<ButtonVariant, { container: string; text: string; spinner: string }> = {
-      primary: {
-        container: "bg-brand-600 dark:bg-brand-500",
-        text: "text-white",
-        spinner: "#FFFFFF",
-      },
-      secondary: {
-        container: "bg-white/10 dark:bg-white/10",
-        text: "text-white",
-        spinner: "#FFFFFF",
-      },
-      outline: {
-        container: "border border-white/20 bg-transparent",
-        text: "text-white",
-        spinner: "#FFFFFF",
-      },
-      ghost: {
-        container: "bg-transparent",
-        text: "text-white",
-        spinner: "#FFFFFF",
-      },
-      destructive: {
-        container: "bg-red-600",
-        text: "text-white",
-        spinner: "#FFFFFF",
-      },
-    };
+  const variantClass = useMemo(() => {
+    switch (variant) {
+      case "secondary":
+        return "bg-slate-100 dark:bg-slate-800";
+      case "outline":
+        return "bg-transparent border border-slate-200 dark:border-slate-700";
+      case "ghost":
+        return "bg-transparent";
+      case "destructive":
+        return "bg-red-600";
+      default:
+        return "bg-brand-600";
+    }
+  }, [variant]);
 
+  const disabledClass = isDisabled ? "opacity-60" : "opacity-100";
+
+  const animatedStyle = useAnimatedStyle(() => {
     return {
-      container: cn(
-        base,
-        sizeStyles[size],
-        variantStyles[variant].container,
-        isDisabled ? "opacity-60" : "opacity-100",
-        className
-      ),
-      text: cn("text-base font-semibold", variantStyles[variant].text),
-      spinnerColor: variantStyles[variant].spinner,
+      transform: [{ scale: scale.value }],
     };
-  }, [className, isDisabled, size, variant]);
+  }, []);
 
   const onPressIn = () => {
-    if (isDisabled) return;
-    Animated.spring(scale, {
-      toValue: 0.98,
-      useNativeDriver: Platform.OS !== "web",
-      speed: 30,
-      bounciness: 0,
-    }).start();
+    scale.value = withSpring(0.98, { damping: 18, stiffness: 250 });
   };
 
   const onPressOut = () => {
-    if (isDisabled) return;
-    Animated.spring(scale, {
-      toValue: 1,
-      useNativeDriver: Platform.OS !== "web",
-      speed: 30,
-      bounciness: 0,
-    }).start();
+    scale.value = withSpring(1, { damping: 18, stiffness: 250 });
   };
 
+  const spinnerColor = useMemo(() => {
+    if (variant === "primary" || variant === "destructive") return "#FFFFFF";
+    return colors.slate[900];
+  }, [variant]);
+
   return (
-    <Animated.View style={{ transform: [{ scale }] }}>
-      <Pressable
-        accessibilityRole="button"
-        disabled={isDisabled}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        className={styles.container}
-        {...props}
-      >
-        {loading ? (
-          <ActivityIndicator color={styles.spinnerColor} />
-        ) : (
-          <View className="flex-row items-center gap-2">
-            {leftIcon ? <View className="-ml-0.5">{leftIcon}</View> : null}
-            <Text className={styles.text}>{children}</Text>
-            {rightIcon ? <View className="-mr-0.5">{rightIcon}</View> : null}
-          </View>
-        )}
-      </Pressable>
-    </Animated.View>
+    <AnimatedPressable
+      accessibilityRole="button"
+      disabled={isDisabled}
+      onPressIn={(e) => {
+        onPressIn();
+        props.onPressIn?.(e);
+      }}
+      onPressOut={(e) => {
+        onPressOut();
+        props.onPressOut?.(e);
+      }}
+      className={cn(baseClass, paddingClass, variantClass, disabledClass, className)}
+      style={[animatedStyle, style]}
+      {...props}
+    >
+      {loading ? (
+        <ActivityIndicator
+          size={Platform.OS === "web" ? "small" : "small"}
+          color={spinnerColor}
+        />
+      ) : null}
+      {typeof children === "string" ? (
+        <Text
+          className={cn(
+            "font-semibold",
+            variant === "primary" || variant === "destructive"
+              ? "text-white"
+              : "text-slate-900 dark:text-white"
+          )}
+        >
+          {children}
+        </Text>
+      ) : (
+        children
+      )}
+    </AnimatedPressable>
   );
 }

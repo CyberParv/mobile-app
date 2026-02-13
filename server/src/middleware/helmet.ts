@@ -1,3 +1,3 @@
 import helmet from 'helmet';
 
-export const securityHeaders = helmet();
+export const helmetMiddleware = helmet();

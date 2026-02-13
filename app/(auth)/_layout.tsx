@@ -1,5 +1,6 @@
-import React, { useEffect } from "react";
 import { Stack, useRouter } from "expo-router";
+import React, { useEffect } from "react";
+
 import { useAuth } from "@/hooks/useAuth";
 
 export default function AuthLayout() {
@@ -16,7 +17,7 @@ export default function AuthLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: "#0B1220" },
+        animation: "slide_from_right",
       }}
     />
   );

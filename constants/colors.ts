@@ -1,28 +1,38 @@
 export const colors = {
-  background: {
-    light: "#0B1220",
-    dark: "#050A14",
-    surfaceLight: "#0F1A2E",
-    surfaceDark: "#0A1222"
-  },
-  text: {
-    light: "#E6EAF2",
-    dark: "#E6EAF2",
-    mutedLight: "#AAB4C5",
-    mutedDark: "#9AA6BB"
-  },
-  border: {
-    light: "#1E2A44",
-    dark: "#16233B"
-  },
   brand: {
-    primary: "#6366F1",
-    primaryDark: "#4F46E5"
+    50: "#EEF2FF",
+    100: "#E0E7FF",
+    200: "#C7D2FE",
+    300: "#A5B4FC",
+    400: "#818CF8",
+    500: "#6366F1",
+    600: "#4F46E5",
+    700: "#4338CA",
+    800: "#3730A3",
+    900: "#312E81"
   },
-  status: {
-    success: "#22C55E",
-    warning: "#F59E0B",
-    error: "#EF4444",
-    info: "#38BDF8"
+  slate: {
+    50: "#F8FAFC",
+    100: "#F1F5F9",
+    200: "#E2E8F0",
+    300: "#CBD5E1",
+    400: "#94A3B8",
+    500: "#64748B",
+    600: "#475569",
+    700: "#334155",
+    800: "#1E293B",
+    900: "#0F172A"
+  },
+  red: {
+    50: "#FEF2F2",
+    100: "#FEE2E2",
+    200: "#FECACA",
+    300: "#FCA5A5",
+    400: "#F87171",
+    500: "#EF4444",
+    600: "#DC2626",
+    700: "#B91C1C",
+    800: "#991B1B",
+    900: "#7F1D1D"
   }
 } as const;

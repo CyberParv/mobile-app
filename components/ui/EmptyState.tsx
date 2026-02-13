@@ -1,5 +1,6 @@
 import React from "react";
 import { Text, View } from "react-native";
+
 import { Button } from "@/components/ui/Button";
 
 export type EmptyStateProps = {
@@ -10,18 +11,29 @@ export type EmptyStateProps = {
   onAction?: () => void;
 };
 
-export function EmptyState({ icon, title, description, actionLabel, onAction }: EmptyStateProps) {
+export function EmptyState({
+  icon,
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: EmptyStateProps) {
   return (
-    <View className="items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-6">
-      {icon ? <View className="mb-3">{icon}</View> : null}
-      <Text className="text-center text-lg font-semibold text-white">{title}</Text>
+    <View className="flex-1 items-center justify-center px-6 py-10">
+      {icon ? <View className="mb-4">{icon}</View> : null}
+      <Text className="text-lg font-semibold text-slate-900 dark:text-white text-center">
+        {title}
+      </Text>
       {description ? (
-        <Text className="mt-2 text-center text-sm leading-5 text-white/70">{description}</Text>
+        <Text className="mt-2 text-slate-600 dark:text-slate-300 text-center">
+          {description}
+        </Text>
       ) : null}
+
       {actionLabel && onAction ? (
-        <View className="mt-4 w-full">
-          <Button variant="secondary" onPress={onAction}>
-            {actionLabel}
+        <View className="mt-5 w-full max-w-xs">
+          <Button variant="primary" size="md" onPress={onAction}>
+            <Text className="text-white font-semibold">{actionLabel}</Text>
           </Button>
         </View>
       ) : null}

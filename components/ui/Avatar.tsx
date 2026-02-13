@@ -1,51 +1,59 @@
 import React, { useMemo } from "react";
 import { Image, Text, View } from "react-native";
-import { cn } from "@/lib/utils";
+
+import { cn, truncateText } from "@/lib/utils";
 
 type AvatarSize = "sm" | "md" | "lg";
 
-export function Avatar({
-  name,
-  uri,
-  size = "md",
-  className,
-}: {
+export type AvatarProps = {
   name?: string;
   uri?: string | null;
   size?: AvatarSize;
   className?: string;
-}) {
+};
+
+function initialsFromName(name?: string) {
+  const n = (name ?? "").trim();
+  if (!n) return "?";
+  const parts = n.split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+  return (first + last).toUpperCase();
+}
+
+export function Avatar({ name, uri, size = "md", className }: AvatarProps) {
   const dims = useMemo(() => {
     switch (size) {
       case "sm":
-        return { box: 32, text: "text-xs" };
+        return { w: 32, text: "text-xs" };
       case "lg":
-        return { box: 56, text: "text-lg" };
-      case "md":
+        return { w: 56, text: "text-lg" };
       default:
-        return { box: 40, text: "text-sm" };
+        return { w: 40, text: "text-sm" };
     }
   }, [size]);
 
-  const initials = useMemo(() => {
-    const n = (name ?? "").trim();
-    if (!n) return "?";
-    const parts = n.split(/\s+/).slice(0, 2);
-    return parts.map((p) => p[0]?.toUpperCase()).join("");
-  }, [name]);
+  const initials = useMemo(() => initialsFromName(name), [name]);
 
   return (
     <View
-      style={{ width: dims.box, height: dims.box }}
+      style={{ width: dims.w, height: dims.w, borderRadius: dims.w / 2 }}
       className={cn(
-        "items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/10",
+        "bg-slate-200 dark:bg-slate-800 items-center justify-center overflow-hidden",
         className
       )}
     >
       {uri ? (
-        <Image source={{ uri }} style={{ width: dims.box, height: dims.box }} />
+        <Image
+          source={{ uri }}
+          style={{ width: dims.w, height: dims.w }}
+          resizeMode="cover"
+          accessibilityLabel={name ? truncateText(name, 40) : "Avatar"}
+        />
       ) : (
-        <Text className={cn("font-semibold text-white", dims.text)}>{initials}</Text>
+        <Text className={cn("font-semibold text-slate-700 dark:text-slate-200", dims.text)}>
+          {initials}
+        </Text>
       )}
     </View>
   );

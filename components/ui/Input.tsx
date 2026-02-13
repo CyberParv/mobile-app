@@ -1,14 +1,23 @@
 import React, { useMemo, useState } from "react";
+import {
+  Platform,
+  Text,
+  TextInput,
+  TextInputProps,
+  View,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, Text, TextInput, TextInputProps, View } from "react-native";
+
 import { cn } from "@/lib/utils";
+import { colors } from "@/constants/colors";
 
 export type InputProps = TextInputProps & {
   label?: string;
   error?: string;
-  leftIcon?: React.ReactNode;
-  rightIcon?: React.ReactNode;
-  containerClassName?: string;
+  leftIcon?: keyof typeof Ionicons.glyphMap;
+  rightIcon?: keyof typeof Ionicons.glyphMap;
+  onRightIconPress?: () => void;
+  className?: string;
 };
 
 export function Input({
@@ -16,57 +25,94 @@ export function Input({
   error,
   leftIcon,
   rightIcon,
+  onRightIconPress,
   secureTextEntry,
-  containerClassName,
   className,
   ...props
 }: InputProps) {
-  const [isSecure, setIsSecure] = useState(!!secureTextEntry);
+  const [isFocused, setIsFocused] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const showToggle = useMemo(() => !!secureTextEntry, [secureTextEntry]);
+  const isPassword = !!secureTextEntry;
+  const effectiveSecure = isPassword ? !showPassword : false;
+
+  const borderClass = useMemo(() => {
+    if (error) return "border-red-500";
+    if (isFocused) return "border-brand-500";
+    return "border-slate-200 dark:border-slate-700";
+  }, [error, isFocused]);
+
+  const iconColor = useMemo(() => {
+    if (error) return colors.red[600];
+    if (isFocused) return colors.brand[600];
+    return colors.slate[500];
+  }, [error, isFocused]);
 
   return (
-    <View className={cn("w-full", containerClassName)}>
-      {label ? <Text className="mb-2 text-sm font-medium text-white/90">{label}</Text> : null}
+    <View className={cn("w-full", className)}>
+      {label ? (
+        <Text className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+          {label}
+        </Text>
+      ) : null}
 
       <View
         className={cn(
-          "h-12 flex-row items-center rounded-2xl border px-3",
-          error ? "border-red-400/60" : "border-white/15",
-          "bg-white/5"
+          "flex-row items-center rounded-xl border bg-white dark:bg-slate-950 px-3",
+          borderClass
         )}
       >
-        {leftIcon ? <View className="mr-2">{leftIcon}</View> : null}
+        {leftIcon ? (
+          <View className="mr-2">
+            <Ionicons name={leftIcon} size={18} color={iconColor} />
+          </View>
+        ) : null}
 
         <TextInput
-          className={cn(
-            "flex-1 text-base text-white",
-            "placeholder:text-white/40",
-            className
-          )}
-          placeholderTextColor="rgba(255,255,255,0.4)"
-          secureTextEntry={isSecure}
-          autoCapitalize={props.autoCapitalize ?? "none"}
-          autoCorrect={props.autoCorrect ?? false}
           {...props}
+          secureTextEntry={effectiveSecure}
+          onFocus={(e) => {
+            setIsFocused(true);
+            props.onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setIsFocused(false);
+            props.onBlur?.(e);
+          }}
+          placeholderTextColor={colors.slate[400]}
+          className={cn(
+            "flex-1 text-slate-900 dark:text-white",
+            "h-12", // explicit height for web compatibility
+            Platform.OS === "web" ? "outline-none" : ""
+          )}
         />
 
-        {showToggle ? (
-          <Pressable
-            onPress={() => setIsSecure((v) => !v)}
-            hitSlop={10}
-            className="ml-2"
-            accessibilityRole="button"
-            accessibilityLabel={isSecure ? "Show password" : "Hide password"}
-          >
-            <Ionicons name={isSecure ? "eye" : "eye-off"} size={20} color="rgba(255,255,255,0.75)" />
-          </Pressable>
+        {isPassword ? (
+          <View className="ml-2">
+            <Ionicons
+              name={showPassword ? "eye-off" : "eye"}
+              size={18}
+              color={iconColor}
+              onPress={() => setShowPassword((v) => !v)}
+            />
+          </View>
         ) : rightIcon ? (
-          <View className="ml-2">{rightIcon}</View>
+          <View className="ml-2">
+            <Ionicons
+              name={rightIcon}
+              size={18}
+              color={iconColor}
+              onPress={onRightIconPress}
+            />
+          </View>
         ) : null}
       </View>
 
-      {error ? <Text className="mt-2 text-sm text-red-300">{error}</Text> : null}
+      {error ? (
+        <Text className="mt-2 text-sm text-red-600 dark:text-red-400">
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 }

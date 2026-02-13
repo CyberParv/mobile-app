@@ -6,7 +6,7 @@ export const auth = async (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
-  if (!token) return res.status(401).json({ success: false, error: { code: 'AUTH_TOKEN_MISSING', message: 'Token is missing' } });
+  if (!token) return res.status(401).json({ success: false, error: { code: 'AUTH_TOKEN_MISSING', message: 'Token missing' } });
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET!) as jwt.JwtPayload;
@@ -22,6 +22,6 @@ export const auth = async (req: Request, res: Response, next: NextFunction) => {
     } else if (err instanceof jwt.JsonWebTokenError) {
       return res.status(401).json({ success: false, error: { code: 'AUTH_TOKEN_INVALID', message: 'Token invalid' } });
     }
-    return res.status(500).json({ success: false, error: { code: 'AUTH_ERROR', message: 'Authentication error' } });
+    next(err);
   }
 };

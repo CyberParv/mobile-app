@@ -1,5 +1,6 @@
 import React from "react";
-import { ErrorView } from "@/components/ui/ErrorView";
+
+import { ErrorView } from "@/components/ui";
 
 type Props = {
   children: React.ReactNode;
@@ -17,8 +18,10 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    // In production, wire this to Sentry/Bugsnag.
-    console.error("ErrorBoundary caught error:", error, info);
+    // In production, forward to crash reporting (Sentry/Bugsnag/etc.)
+    // Keep console for dev visibility.
+    // eslint-disable-next-line no-console
+    console.error("ErrorBoundary caught error", error, info);
   }
 
   retry = () => {
@@ -27,7 +30,12 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   render() {
     if (this.state.error) {
-      return <ErrorView message={this.state.error.message} onRetry={this.retry} />;
+      return (
+        <ErrorView
+          message={this.state.error.message || "Unexpected error"}
+          onRetry={this.retry}
+        />
+      );
     }
 
     return this.props.children;

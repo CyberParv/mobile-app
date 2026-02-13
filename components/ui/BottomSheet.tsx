@@ -1,16 +1,16 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
   Modal,
   PanResponder,
-  Platform,
   Pressable,
   View,
 } from "react-native";
+
 import { cn } from "@/lib/utils";
 
-type BottomSheetProps = {
+export type BottomSheetProps = {
   visible: boolean;
   onClose: () => void;
   children: React.ReactNode;
@@ -19,89 +19,97 @@ type BottomSheetProps = {
   className?: string;
 };
 
-export function BottomSheet({ visible, onClose, children, height, className }: BottomSheetProps) {
+export function BottomSheet({
+  visible,
+  onClose,
+  children,
+  height,
+  className,
+}: BottomSheetProps) {
   const screenH = Dimensions.get("window").height;
-  const sheetHeight = useMemo(() => Math.min(height ?? Math.round(screenH * 0.55), Math.round(screenH * 0.85)), [height, screenH]);
+  const sheetHeight = useMemo(() => {
+    const h = height ?? Math.min(520, Math.round(screenH * 0.65));
+    return Math.max(240, Math.min(h, screenH - 80));
+  }, [height, screenH]);
 
   const translateY = useRef(new Animated.Value(sheetHeight)).current;
-  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const dragY = useRef(new Animated.Value(0)).current;
+  const [mounted, setMounted] = useState(visible);
 
   useEffect(() => {
     if (visible) {
-      Animated.parallel([
-        Animated.timing(translateY, {
-          toValue: 0,
-          duration: 220,
-          useNativeDriver: Platform.OS !== "web",
-        }),
-        Animated.timing(backdropOpacity, {
-          toValue: 1,
-          duration: 220,
-          useNativeDriver: Platform.OS !== "web",
-        }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(translateY, {
-          toValue: sheetHeight,
-          duration: 200,
-          useNativeDriver: Platform.OS !== "web",
-        }),
-        Animated.timing(backdropOpacity, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: Platform.OS !== "web",
-        }),
-      ]).start();
+      setMounted(true);
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }).start();
+    } else if (mounted) {
+      Animated.timing(translateY, {
+        toValue: sheetHeight,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) setMounted(false);
+      });
     }
-  }, [visible, sheetHeight, translateY, backdropOpacity]);
+  }, [mounted, sheetHeight, translateY, visible]);
 
   const panResponder = useMemo(
     () =>
       PanResponder.create({
-        onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 6,
-        onPanResponderMove: (_, gesture) => {
-          if (gesture.dy > 0) translateY.setValue(gesture.dy);
-        },
+        onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 4,
+        onPanResponderMove: Animated.event([null, { dy: dragY }], {
+          useNativeDriver: false,
+        }),
         onPanResponderRelease: (_, gesture) => {
-          const shouldClose = gesture.dy > 90 || gesture.vy > 1.2;
-          if (shouldClose) {
-            onClose();
-          } else {
-            Animated.spring(translateY, {
-              toValue: 0,
-              useNativeDriver: Platform.OS !== "web",
-              speed: 28,
-              bounciness: 0,
-            }).start();
-          }
+          const shouldClose = gesture.dy > 80 || gesture.vy > 1.2;
+          dragY.setValue(0);
+          if (shouldClose) onClose();
         },
       }),
-    [onClose, translateY]
+    [dragY, onClose]
   );
 
+  if (!mounted) return null;
+
+  const combinedTranslate = Animated.add(translateY, dragY).interpolate({
+    inputRange: [0, sheetHeight],
+    outputRange: [0, sheetHeight],
+    extrapolate: "clamp",
+  });
+
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+    <Modal
+      visible={mounted}
+      transparent
+      animationType="none"
+      onRequestClose={onClose}
+    >
       <View className="flex-1 justify-end">
-        <Animated.View
-          style={{ opacity: backdropOpacity }}
-          className="absolute inset-0 bg-black/60"
-        >
-          <Pressable className="flex-1" onPress={onClose} />
-        </Animated.View>
+        <Pressable
+          className="absolute inset-0 bg-black/40"
+          onPress={onClose}
+        />
 
         <Animated.View
-          style={{ transform: [{ translateY }], height: sheetHeight }}
+          style={{
+            transform: [{ translateY: combinedTranslate }],
+            height: sheetHeight,
+          }}
           className={cn(
-            "rounded-t-3xl border border-white/10 bg-[#0F1A2E] p-4",
+            "bg-white dark:bg-slate-950 rounded-t-3xl border border-slate-200/70 dark:border-slate-800 overflow-hidden",
             className
           )}
-          {...panResponder.panHandlers}
         >
-          <View className="items-center pb-3">
-            <View className="h-1.5 w-12 rounded-full bg-white/20" />
+          <View
+            {...panResponder.panHandlers}
+            className="py-3 items-center border-b border-slate-200/70 dark:border-slate-800"
+          >
+            <View className="h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-700" />
           </View>
-          {children}
+
+          <View className="flex-1 p-4">{children}</View>
         </Animated.View>
       </View>
     </Modal>

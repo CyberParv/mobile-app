@@ -3,14 +3,18 @@ import bcrypt from 'bcryptjs';
 
 async function main() {
   const hashedPassword = await bcrypt.hash('password123', 12);
-  await prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       email: 'test@example.com',
       password: hashedPassword,
-      name: 'Test User',
-      entities: {
-        create: [{ name: 'Sample Entity' }]
-      }
+      name: 'Test User'
+    }
+  });
+
+  await prisma.entity.create({
+    data: {
+      name: 'Sample Entity',
+      userId: user.id
     }
   });
 }

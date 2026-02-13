@@ -1,26 +1,33 @@
 import React from "react";
-import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "react-native";
-import { Button } from "@/components/ui/Button";
+import { Ionicons } from "@expo/vector-icons";
 
-export function ErrorView({
-  message,
-  onRetry,
-}: {
+import { Button } from "@/components/ui/Button";
+import { colors } from "@/constants/colors";
+
+export type ErrorViewProps = {
   message?: string;
   onRetry?: () => void;
-}) {
+};
+
+export function ErrorView({
+  message = "Something went wrong.",
+  onRetry,
+}: ErrorViewProps) {
   return (
-    <View className="items-center justify-center rounded-2xl border border-red-400/20 bg-red-500/10 p-6">
-      <Ionicons name="alert-circle" size={28} color="#FCA5A5" />
-      <Text className="mt-3 text-center text-base font-semibold text-white">Something went wrong</Text>
-      <Text className="mt-2 text-center text-sm text-white/70">
-        {message ?? "An unexpected error occurred. Please try again."}
+    <View className="flex-1 items-center justify-center px-6 py-10">
+      <Ionicons name="alert-circle-outline" size={44} color={colors.red[600]} />
+      <Text className="mt-3 text-lg font-semibold text-slate-900 dark:text-white text-center">
+        Error
       </Text>
+      <Text className="mt-2 text-slate-600 dark:text-slate-300 text-center">
+        {message}
+      </Text>
+
       {onRetry ? (
-        <View className="mt-4 w-full">
-          <Button variant="outline" onPress={onRetry}>
-            Retry
+        <View className="mt-5 w-full max-w-xs">
+          <Button variant="outline" size="md" onPress={onRetry}>
+            <Text className="text-slate-900 dark:text-white font-semibold">Retry</Text>
           </Button>
         </View>
       ) : null}
