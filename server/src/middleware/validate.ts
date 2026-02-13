@@ -1,32 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 
-const validateRules = (value: any, rules: string[]) => {
-  for (const rule of rules) {
-    const [ruleName, ruleValue] = rule.split(':');
-    switch (ruleName) {
-      case 'required':
-        if (!value) return `${ruleName} validation failed`;
-        break;
-      case 'email':
-        const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
-        if (!emailRegex.test(value)) return `${ruleName} validation failed`;
-        break;
-      case 'min':
-        if (value.length < parseInt(ruleValue)) return `${ruleName} validation failed`;
-        break;
-      case 'max':
-        if (value.length > parseInt(ruleValue)) return `${ruleName} validation failed`;
-        break;
-      case 'uuid':
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-        if (!uuidRegex.test(value)) return `${ruleName} validation failed`;
-        break;
-      // Add more rules as needed
-    }
-  }
-  return null;
-};
-
 export const validate = (rules: any) => {
   return (req: Request, res: Response, next: NextFunction) => {
     const errors: any = {};
@@ -34,10 +7,47 @@ export const validate = (rules: any) => {
     for (const [location, fields] of Object.entries(rules)) {
       if (typeof fields === 'object') {
         for (const [field, fieldRules] of Object.entries(fields)) {
-          const value = req[location][field];
-          const error = validateRules(value, fieldRules.split('|'));
-          if (error) {
-            errors[field] = error;
+          const value = req[location as keyof Request][field];
+          const rulesArray = fieldRules.split('|');
+
+          for (const rule of rulesArray) {
+            const [ruleName, ruleValue] = rule.split(':');
+
+            if (ruleName === 'required' && !value) {
+              errors[field] = `${field} is required`;
+            }
+
+            if (ruleName === 'email' && value && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)) {
+              errors[field] = `${field} must be a valid email`;
+            }
+
+            if (ruleName === 'min' && value && value.length < parseInt(ruleValue)) {
+              errors[field] = `${field} must be at least ${ruleValue} characters`;
+            }
+
+            if (ruleName === 'max' && value && value.length > parseInt(ruleValue)) {
+              errors[field] = `${field} must be no more than ${ruleValue} characters`;
+            }
+
+            if (ruleName === 'uuid' && value && !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value)) {
+              errors[field] = `${field} must be a valid UUID`;
+            }
+
+            if (ruleName === 'numeric' && value && isNaN(Number(value))) {
+              errors[field] = `${field} must be numeric`;
+            }
+
+            if (ruleName === 'boolean' && value && typeof value !== 'boolean') {
+              errors[field] = `${field} must be a boolean`;
+            }
+
+            if (ruleName === 'array' && value && !Array.isArray(value)) {
+              errors[field] = `${field} must be an array`;
+            }
+
+            if (ruleName === 'date' && value && isNaN(Date.parse(value))) {
+              errors[field] = `${field} must be a valid date`;
+            }
           }
         }
       }

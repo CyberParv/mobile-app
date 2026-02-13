@@ -1,1 +1,74 @@
-import React from 'react'; import { renderHook, act } from '@testing-library/react-hooks'; import { AuthProvider, useAuth } from '@/providers/AuthProvider'; import { renderWithProviders } from '../utils/test-utils'; describe('AuthProvider', () => { it('provides isAuthenticated=false when no token', () => { const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider }); expect(result.current.isAuthenticated).toBe(false); }); it('provides isAuthenticated=true when valid token exists', () => { const { result } = renderHook(() => useAuth(), { wrapper: ({ children }) => <AuthProvider overrideAuth={{ token: 'valid-token' }}>{children}</AuthProvider> }); expect(result.current.isAuthenticated).toBe(true); }); it('login stores token and updates state', async () => { const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider }); await act(async () => { await result.current.login('user@example.com', 'Password123!'); }); expect(result.current.isAuthenticated).toBe(true); }); it('logout clears token and updates state', async () => { const { result } = renderHook(() => useAuth(), { wrapper: ({ children }) => <AuthProvider overrideAuth={{ token: 'valid-token' }}>{children}</AuthProvider> }); await act(async () => { await result.current.logout(); }); expect(result.current.isAuthenticated).toBe(false); }); it('signup creates account and stores token', async () => { const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider }); await act(async () => { await result.current.signup('newuser@example.com', 'Password123!'); }); expect(result.current.isAuthenticated).toBe(true); }); it('handles token refresh on 401', async () => { const { result } = renderHook(() => useAuth(), { wrapper: ({ children }) => <AuthProvider overrideAuth={{ token: 'expired-token' }}>{children}</AuthProvider> }); mockApi.mockRejectedValueOnce({ response: { status: 401 } }).mockResolvedValueOnce({ data: { token: 'new-token' } }); await act(async () => { await result.current.refreshToken(); }); expect(result.current.isAuthenticated).toBe(true); }); });
+import React from 'react';
+import { renderHook, act } from '@testing-library/react-hooks';
+import { AuthProvider, useAuth } from '@/providers/AuthProvider';
+import { mockApi } from '../utils/test-utils';
+
+const apiMock = mockApi();
+
+describe('AuthProvider', () => {
+  beforeEach(() => {
+    apiMock.reset();
+  });
+
+  it('provides isAuthenticated=false when no token', () => {
+    const { result } = renderHook(() => useAuth(), {
+      wrapper: AuthProvider
+    });
+    expect(result.current.isAuthenticated).toBe(false);
+  });
+
+  it('provides isAuthenticated=true when valid token exists', async () => {
+    apiMock.onGet('/auth/validate').reply(200);
+    const { result, waitForNextUpdate } = renderHook(() => useAuth(), {
+      wrapper: AuthProvider
+    });
+    await waitForNextUpdate();
+    expect(result.current.isAuthenticated).toBe(true);
+  });
+
+  it('login stores token and updates state', async () => {
+    apiMock.onPost('/auth/login').reply(200, { token: 'fake-token' });
+    const { result, waitForNextUpdate } = renderHook(() => useAuth(), {
+      wrapper: AuthProvider
+    });
+    act(() => {
+      result.current.login('test@example.com', 'Password123!');
+    });
+    await waitForNextUpdate();
+    expect(result.current.isAuthenticated).toBe(true);
+  });
+
+  it('logout clears token and updates state', async () => {
+    apiMock.onPost('/auth/logout').reply(200);
+    const { result, waitForNextUpdate } = renderHook(() => useAuth(), {
+      wrapper: AuthProvider
+    });
+    act(() => {
+      result.current.logout();
+    });
+    await waitForNextUpdate();
+    expect(result.current.isAuthenticated).toBe(false);
+  });
+
+  it('signup creates account and stores token', async () => {
+    apiMock.onPost('/auth/signup').reply(200, { token: 'fake-token' });
+    const { result, waitForNextUpdate } = renderHook(() => useAuth(), {
+      wrapper: AuthProvider
+    });
+    act(() => {
+      result.current.signup('test@example.com', 'Password123!');
+    });
+    await waitForNextUpdate();
+    expect(result.current.isAuthenticated).toBe(true);
+  });
+
+  it('handles token refresh on 401', async () => {
+    apiMock.onGet('/auth/validate').reply(401);
+    apiMock.onPost('/auth/refresh').reply(200, { token: 'new-token' });
+    const { result, waitForNextUpdate } = renderHook(() => useAuth(), {
+      wrapper: AuthProvider
+    });
+    await waitForNextUpdate();
+    expect(result.current.isAuthenticated).toBe(true);
+  });
+});

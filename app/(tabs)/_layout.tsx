@@ -1,40 +1,35 @@
-import { Tabs, useRouter } from 'expo-router';
-import React, { useEffect } from 'react';
-import { Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from "@expo/vector-icons";
+import { Tabs, useRouter } from "expo-router";
+import React, { useEffect } from "react";
 
-import { useAuth } from '@/hooks/useAuth';
-import { colors } from '@/constants/colors';
+import { colors } from "@/constants/colors";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function TabsLayout() {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.replace('/(auth)/login');
-    }
+    if (!isLoading && !isAuthenticated) router.replace("/(auth)/login");
   }, [isAuthenticated, isLoading, router]);
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.muted,
+        tabBarActiveTintColor: colors.brand[600],
+        tabBarInactiveTintColor: colors.slate[500],
         tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopColor: colors.border,
-          height: Platform.OS === 'ios' ? 88 : 64,
-          paddingTop: 8
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border
         }
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />
+          title: "Home",
+          tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" color={color} size={size} />
         }}
       />
     </Tabs>

@@ -7,7 +7,7 @@ export function useProfile() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchProfile = async () => {
       try {
         const response = await api.get('/v1/me');
         setData(response.data);
@@ -18,8 +18,8 @@ export function useProfile() {
       }
     };
 
-    fetchData();
+    fetchProfile();
   }, []);
 
-  return { data, isLoading, error };
+  return { data, isLoading, error, refetch: fetchProfile };
 }

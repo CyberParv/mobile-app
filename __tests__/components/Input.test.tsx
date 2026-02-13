@@ -1,1 +1,34 @@
-import React from 'react'; import { fireEvent, render } from '@testing-library/react-native'; import Input from '@/components/ui/Input'; describe('Input', () => { it('renders with label', () => { const { getByText } = render(<Input label='Email' />); expect(getByText('Email')).toBeTruthy(); }); it('shows error message when error prop set', () => { const { getByText } = render(<Input error='Invalid email' />); expect(getByText('Invalid email')).toBeTruthy(); }); it('calls onChangeText', () => { const onChangeText = jest.fn(); const { getByPlaceholderText } = render(<Input onChangeText={onChangeText} placeholder='Type here' />); fireEvent.changeText(getByPlaceholderText('Type here'), 'new text'); expect(onChangeText).toHaveBeenCalledWith('new text'); }); it('toggles password visibility', () => { const { getByTestId, getByPlaceholderText } = render(<Input secureTextEntry={true} />); fireEvent.press(getByTestId('toggle-password-visibility')); expect(getByPlaceholderText('Password').props.secureTextEntry).toBe(false); }); it('shows character count when maxLength set', () => { const { getByText } = render(<Input maxLength={10} value='12345' />); expect(getByText('5/10')).toBeTruthy(); }); });
+import React from 'react';
+import { fireEvent, render } from '@testing-library/react-native';
+import Input from '@/components/ui/Input';
+
+describe('Input', () => {
+  it('renders with label', () => {
+    const { getByText } = render(<Input label="Email" />);
+    expect(getByText('Email')).toBeTruthy();
+  });
+
+  it('shows error message when error prop set', () => {
+    const { getByText } = render(<Input error="Invalid email" />);
+    expect(getByText('Invalid email')).toBeTruthy();
+  });
+
+  it('calls onChangeText', () => {
+    const onChangeText = jest.fn();
+    const { getByPlaceholderText } = render(<Input placeholder="Email" onChangeText={onChangeText} />);
+    fireEvent.changeText(getByPlaceholderText('Email'), 'test@example.com');
+    expect(onChangeText).toHaveBeenCalledWith('test@example.com');
+  });
+
+  it('toggles password visibility', () => {
+    const { getByTestId, getByPlaceholderText } = render(<Input secureTextEntry placeholder="Password" />);
+    const toggleButton = getByTestId('toggle-password-visibility');
+    fireEvent.press(toggleButton);
+    expect(getByPlaceholderText('Password').props.secureTextEntry).toBe(false);
+  });
+
+  it('shows character count when maxLength set', () => {
+    const { getByText } = render(<Input maxLength={10} value="12345" />);
+    expect(getByText('5/10')).toBeTruthy();
+  });
+});

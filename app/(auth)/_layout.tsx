@@ -1,7 +1,7 @@
-import { Redirect, Stack } from 'expo-router';
-import React from 'react';
+import { Redirect, Stack } from "expo-router";
+import React from "react";
 
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AuthLayout() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -13,8 +13,7 @@ export default function AuthLayout() {
   return (
     <Stack
       screenOptions={{
-        headerShown: false,
-        animation: 'slide_from_right'
+        headerShown: false
       }}
     />
   );

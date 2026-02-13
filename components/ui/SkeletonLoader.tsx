@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { View, ViewProps } from 'react-native';
+import React, { useEffect } from "react";
+import { View, ViewProps } from "react-native";
 import Animated, {
   Easing,
   interpolate,
@@ -7,16 +7,16 @@ import Animated, {
   useSharedValue,
   withRepeat,
   withTiming
-} from 'react-native-reanimated';
+} from "react-native-reanimated";
 
-import { cn } from '@/lib/utils';
+import { cn } from "@/lib/utils";
 
-export type SkeletonLoaderProps = {
+export type SkeletonLoaderProps = ViewProps & {
   className?: string;
-  rounded?: 'sm' | 'md' | 'lg' | 'full';
-} & Omit<ViewProps, 'children'>;
+  rounded?: "sm" | "md" | "lg" | "full";
+};
 
-export function SkeletonLoader({ className, rounded = 'md', style, ...props }: SkeletonLoaderProps) {
+export function SkeletonLoader({ className, rounded = "md", ...props }: SkeletonLoaderProps) {
   const progress = useSharedValue(0);
 
   useEffect(() => {
@@ -33,21 +33,17 @@ export function SkeletonLoader({ className, rounded = 'md', style, ...props }: S
   });
 
   const roundedClass =
-    rounded === 'sm'
-      ? 'rounded-md'
-      : rounded === 'lg'
-        ? 'rounded-2xl'
-        : rounded === 'full'
-          ? 'rounded-full'
-          : 'rounded-xl';
+    rounded === "full" ? "rounded-full" : rounded === "lg" ? "rounded-2xl" : rounded === "sm" ? "rounded-lg" : "rounded-xl";
 
   return (
     <View
-      className={cn('overflow-hidden bg-border/60', roundedClass, className)}
-      style={style}
+      className={cn("overflow-hidden bg-slate-200 dark:bg-slate-800", roundedClass, className)}
       {...props}
     >
-      <Animated.View className="absolute inset-0 bg-white/10" style={animatedStyle} />
+      <Animated.View
+        style={animatedStyle}
+        className={cn("absolute inset-0 bg-white/40 dark:bg-white/10")}
+      />
     </View>
   );
 }

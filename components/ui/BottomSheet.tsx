@@ -1,104 +1,129 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
-  Dimensions,
   Modal,
   PanResponder,
+  Platform,
   Pressable,
-  View,
-  ViewProps
-} from 'react-native';
+  StyleSheet,
+  useWindowDimensions,
+  View
+} from "react-native";
 
-import { cn } from '@/lib/utils';
+import { cn } from "@/lib/utils";
 
 export type BottomSheetProps = {
   visible: boolean;
   onClose: () => void;
   children: React.ReactNode;
   title?: string;
-  height?: number;
   className?: string;
-} & Omit<ViewProps, 'children'>;
+  maxHeightPercent?: number; // 0..1
+};
 
 export function BottomSheet({
   visible,
   onClose,
   children,
-  height,
   className,
-  ...props
+  maxHeightPercent = 0.85
 }: BottomSheetProps) {
-  const screenH = Dimensions.get('window').height;
-  const sheetHeight = useMemo(() => {
-    const h = height ?? Math.min(520, Math.round(screenH * 0.6));
-    return Math.max(240, Math.min(h, screenH - 80));
-  }, [height, screenH]);
+  const { height } = useWindowDimensions();
+  const maxHeight = Math.max(240, Math.floor(height * maxHeightPercent));
 
-  const translateY = useRef(new Animated.Value(sheetHeight)).current;
-  const [mounted, setMounted] = useState(false);
+  const translateY = useRef(new Animated.Value(maxHeight)).current;
+  const [mounted, setMounted] = useState(visible);
+
+  const open = () => {
+    setMounted(true);
+    Animated.timing(translateY, {
+      toValue: 0,
+      duration: 220,
+      useNativeDriver: Platform.OS !== "web"
+    }).start();
+  };
+
+  const close = (cb?: () => void) => {
+    Animated.timing(translateY, {
+      toValue: maxHeight,
+      duration: 200,
+      useNativeDriver: Platform.OS !== "web"
+    }).start(({ finished }) => {
+      if (finished) {
+        setMounted(false);
+        cb?.();
+      }
+    });
+  };
 
   useEffect(() => {
-    if (visible) {
-      setMounted(true);
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: 220,
-        useNativeDriver: true
-      }).start();
-    } else if (mounted) {
-      Animated.timing(translateY, {
-        toValue: sheetHeight,
-        duration: 180,
-        useNativeDriver: true
-      }).start(({ finished }) => {
-        if (finished) setMounted(false);
-      });
-    }
-  }, [visible, mounted, sheetHeight, translateY]);
+    if (visible) open();
+    else if (mounted) close();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 6,
-        onPanResponderMove: (_, gesture) => {
-          if (gesture.dy > 0) translateY.setValue(gesture.dy);
-        },
-        onPanResponderRelease: (_, gesture) => {
-          if (gesture.dy > 80 || gesture.vy > 1.2) {
-            onClose();
-          } else {
-            Animated.spring(translateY, {
-              toValue: 0,
-              useNativeDriver: true,
-              speed: 20,
-              bounciness: 6
-            }).start();
-          }
+  const panResponder = useMemo(() => {
+    let startY = 0;
+    return PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 6,
+      onPanResponderGrant: () => {
+        translateY.stopAnimation((value: number) => {
+          startY = value;
+        });
+      },
+      onPanResponderMove: (_, gesture) => {
+        const next = Math.max(0, startY + gesture.dy);
+        translateY.setValue(next);
+      },
+      onPanResponderRelease: (_, gesture) => {
+        const shouldClose = gesture.vy > 1.2 || gesture.dy > maxHeight * 0.25;
+        if (shouldClose) {
+          close(onClose);
+        } else {
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: Platform.OS !== "web",
+            speed: 24,
+            bounciness: 0
+          }).start();
         }
-      }),
-    [onClose, translateY]
-  );
+      }
+    });
+  }, [maxHeight, onClose, translateY]);
 
   if (!mounted) return null;
 
   return (
-    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose}>
-      <View className="flex-1 justify-end">
-        <Pressable className="absolute inset-0 bg-black/50" onPress={onClose} />
+    <Modal visible transparent animationType="none" onRequestClose={() => close(onClose)}>
+      <View style={styles.overlay}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={() => close(onClose)} />
 
         <Animated.View
-          style={{ transform: [{ translateY }], height: sheetHeight }}
-          className={cn('rounded-t-3xl bg-card border border-border px-5 pt-3', className)}
-          {...panResponder.panHandlers}
-          {...props}
+          style={[
+            styles.sheet,
+            { maxHeight, transform: [{ translateY }] }
+          ]}
+          className={cn("bg-white dark:bg-slate-900", className)}
         >
-          <View className="items-center pb-3">
-            <View className="h-1.5 w-12 rounded-full bg-border" />
+          <View {...panResponder.panHandlers} className="items-center py-3">
+            <View className="h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-700" />
           </View>
-
-          <View className="flex-1">{children}</View>
+          <View className="px-5 pb-6">{children}</View>
         </Animated.View>
       </View>
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.35)"
+  },
+  sheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: "hidden"
+  }
+});

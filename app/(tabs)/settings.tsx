@@ -1,18 +1,20 @@
 import React from 'react';
 import { View, Text } from 'react-native';
-import { useSettings } from '@/hooks/useSettings';
-import { Card, Spinner, EmptyState, ErrorView } from '@/components/ui';
+import { Button, SkeletonLoader, EmptyState, ErrorView } from '@/components/ui';
+import { useRouter } from 'expo-router';
 
 export default function SettingsScreen() {
-  const { data, isLoading, error } = useSettings();
-
-  if (isLoading) return <Spinner />;
-  if (error) return <ErrorView message="Failed to load settings" />;
-  if (!data) return <EmptyState title="Settings unavailable" />;
+  const router = useRouter();
 
   return (
-    <Card>
-      <Text>Settings</Text>
-    </Card>
+    <View className="p-4">
+      <Text className="text-2xl font-bold mb-4">Settings</Text>
+      <Button onPress={() => { /* Toggle dark mode logic */ }}>
+        <Text>Toggle Dark Mode</Text>
+      </Button>
+      <Button onPress={() => { /* Sign out logic */ }}>
+        <Text>Sign Out</Text>
+      </Button>
+    </View>
   );
 }

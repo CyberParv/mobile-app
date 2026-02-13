@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { View, Text, KeyboardAvoidingView, Platform } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useAuth } from '@/providers/AuthProvider';
 import { Button, Input, Spinner, ErrorView } from '@/components/ui';
+import { useRouter } from 'expo-router';
 
 export default function LoginScreen() {
   const { login, isLoading } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
 
   const handleLogin = async () => {
     try {
@@ -25,17 +25,18 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1 }}
     >
-      <View className="flex-1 justify-center p-4">
+      <View className="flex-1 justify-center px-4">
+        <Text className="text-2xl font-bold mb-4">Log In</Text>
         <Input
-          label="Email"
+          placeholder="Email"
           value={email}
           onChangeText={setEmail}
-          keyboardType="email-address"
           autoCapitalize="none"
+          keyboardType="email-address"
           autoFocus
         />
         <Input
-          label="Password"
+          placeholder="Password"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -44,9 +45,9 @@ export default function LoginScreen() {
         <Button onPress={handleLogin} disabled={isLoading}>
           {isLoading ? <Spinner /> : <Text>Log In</Text>}
         </Button>
-        <Button onPress={() => router.push('/(auth)/signup')}>
-          <Text>Create account</Text>
-        </Button>
+        <Text onPress={() => router.push('/(auth)/signup')} className="mt-4 text-primary">
+          Create account
+        </Text>
       </View>
     </KeyboardAvoidingView>
   );

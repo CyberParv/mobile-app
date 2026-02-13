@@ -1,1 +1,24 @@
-export function createUser(id = 1) { return { id, name: `User ${id}`, email: `user${id}@example.com`, password: 'Password123!' }; } export function createWorkout(id = 1) { return { id, title: `Workout ${id}`, duration: 60 }; } export function createEntity(id = 1) { return { id, name: `Entity ${id}` }; }
+export function createUser(id = 1) {
+  return {
+    id,
+    name: `User ${id}`,
+    email: `user${id}@example.com`,
+    password: 'Password123!'
+  };
+}
+
+export function createWorkout(id = 1) {
+  return {
+    id,
+    title: `Workout ${id}`,
+    description: 'A great workout session',
+    duration: 60
+  };
+}
+
+export function createEntity(id = 1) {
+  return {
+    id,
+    name: `Entity ${id}`
+  };
+}

@@ -7,7 +7,7 @@ export function useCart() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCart = async () => {
       try {
         const response = await api.get('/v1/cart');
         setData(response.data);
@@ -18,8 +18,8 @@ export function useCart() {
       }
     };
 
-    fetchData();
+    fetchCart();
   }, []);
 
-  return { data, isLoading, error };
+  return { data, isLoading, error, refetch: fetchCart };
 }

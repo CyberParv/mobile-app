@@ -1,6 +1,6 @@
-import { Dimensions } from 'react-native';
+import { Dimensions } from "react-native";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 export const layout = {
   screen: {
@@ -13,12 +13,12 @@ export const layout = {
     md: 12,
     lg: 16,
     xl: 24,
-    '2xl': 32
+    xxl: 32
   },
   radius: {
-    sm: 8,
-    md: 12,
-    lg: 16,
+    sm: 10,
+    md: 14,
+    lg: 18,
     xl: 24
   }
 } as const;

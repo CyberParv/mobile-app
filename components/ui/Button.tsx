@@ -1,4 +1,4 @@
-import React, { ReactNode, useMemo, useRef } from 'react';
+import React, { ReactNode, useMemo, useRef } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -7,15 +7,15 @@ import {
   PressableProps,
   Text,
   View
-} from 'react-native';
+} from "react-native";
 
-import { cn } from '@/lib/utils';
-import { colors } from '@/constants/colors';
+import { colors } from "@/constants/colors";
+import { cn } from "@/lib/utils";
 
-type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive';
-type ButtonSize = 'sm' | 'md' | 'lg';
+type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "destructive";
+type ButtonSize = "sm" | "md" | "lg";
 
-export type ButtonProps = Omit<PressableProps, 'children'> & {
+export type ButtonProps = PressableProps & {
   children: ReactNode;
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -25,8 +25,8 @@ export type ButtonProps = Omit<PressableProps, 'children'> & {
 
 export function Button({
   children,
-  variant = 'primary',
-  size = 'md',
+  variant = "primary",
+  size = "md",
   loading = false,
   disabled,
   className,
@@ -38,45 +38,53 @@ export function Button({
 
   const sizeClasses = useMemo(() => {
     switch (size) {
-      case 'sm':
-        return 'h-10 px-3';
-      case 'lg':
-        return 'h-14 px-5';
-      case 'md':
+      case "sm":
+        return "h-10 px-3";
+      case "lg":
+        return "h-14 px-5";
+      case "md":
       default:
-        return 'h-12 px-4';
+        return "h-12 px-4";
     }
   }, [size]);
 
   const variantClasses = useMemo(() => {
     switch (variant) {
-      case 'secondary':
-        return 'bg-card border border-border';
-      case 'outline':
-        return 'bg-transparent border border-border';
-      case 'ghost':
-        return 'bg-transparent';
-      case 'destructive':
-        return 'bg-destructive';
-      case 'primary':
+      case "secondary":
+        return "bg-slate-200 dark:bg-slate-800";
+      case "outline":
+        return "bg-transparent border border-slate-300 dark:border-slate-700";
+      case "ghost":
+        return "bg-transparent";
+      case "destructive":
+        return "bg-red-600";
+      case "primary":
       default:
-        return 'bg-primary';
+        return "bg-brand-600";
     }
   }, [variant]);
 
   const textClasses = useMemo(() => {
-    const base = 'font-semibold';
-    if (variant === 'outline' || variant === 'ghost' || variant === 'secondary') {
-      return cn(base, 'text-foreground');
+    switch (variant) {
+      case "secondary":
+        return "text-slate-900 dark:text-slate-50";
+      case "outline":
+        return "text-slate-900 dark:text-slate-50";
+      case "ghost":
+        return "text-brand-700 dark:text-brand-300";
+      case "destructive":
+        return "text-white";
+      case "primary":
+      default:
+        return "text-white";
     }
-    return cn(base, 'text-white');
   }, [variant]);
 
   function animateTo(toValue: number) {
     Animated.spring(scale, {
       toValue,
-      useNativeDriver: Platform.OS !== 'web',
-      speed: 20,
+      useNativeDriver: Platform.OS !== "web",
+      speed: 30,
       bounciness: 6
     }).start();
   }
@@ -93,27 +101,26 @@ export function Button({
         animateTo(1);
         props.onPressOut?.(e);
       }}
-      className={cn('rounded-xl overflow-hidden', className)}
+      className={cn("rounded-xl", isDisabled && "opacity-60", className)}
       {...props}
     >
       <Animated.View
-        style={{ transform: [{ scale }], opacity: isDisabled ? 0.7 : 1 }}
+        style={{ transform: [{ scale }] }}
         className={cn(
-          'w-full flex-row items-center justify-center rounded-xl',
+          "w-full flex-row items-center justify-center rounded-xl",
           sizeClasses,
           variantClasses
         )}
       >
         {loading ? (
-          <View className="flex-row items-center">
+          <View className="mr-2">
             <ActivityIndicator
-              color={variant === 'primary' || variant === 'destructive' ? '#FFFFFF' : colors.primary}
+              size={size === "sm" ? "small" : "small"}
+              color={variant === "secondary" || variant === "outline" ? colors.slate[900] : "#FFFFFF"}
             />
-            <Text className={cn('ml-2', textClasses)}>{children}</Text>
           </View>
-        ) : (
-          <Text className={textClasses}>{children}</Text>
-        )}
+        ) : null}
+        <Text className={cn("text-base font-semibold", textClasses)}>{children}</Text>
       </Animated.View>
     </Pressable>
   );

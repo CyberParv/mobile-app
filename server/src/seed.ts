@@ -1,27 +1,26 @@
 import { prisma } from './lib/prisma';
 import bcrypt from 'bcryptjs';
 
-const seed = async () => {
+async function main() {
   const password = await bcrypt.hash('password123', 12);
-  await prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       email: 'test@example.com',
       password,
-      name: 'Test User',
-      refreshTokens: {
-        create: [{
-          token: 'sample-refresh-token',
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-        }]
-      }
+      name: 'Test User'
     }
   });
-  console.log('Database seeded');
-};
 
-seed().catch(e => {
-  console.error(e);
-  process.exit(1);
-}).finally(async () => {
-  await prisma.$disconnect();
-});
+  await prisma.entity.create({
+    data: {
+      name: 'Sample Entity',
+      userId: user.id
+    }
+  });
+}
+
+main()
+  .catch(e => console.error(e))
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

@@ -7,7 +7,7 @@ export function useCheckout() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCheckout = async () => {
       try {
         const response = await api.get('/v1/checkout');
         setData(response.data);
@@ -18,8 +18,8 @@ export function useCheckout() {
       }
     };
 
-    fetchData();
+    fetchCheckout();
   }, []);
 
-  return { data, isLoading, error };
+  return { data, isLoading, error, refetch: fetchCheckout };
 }

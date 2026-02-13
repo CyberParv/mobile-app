@@ -7,7 +7,7 @@ export function useProducts() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchProducts = async () => {
       try {
         const response = await api.get('/v1/products');
         setData(response.data);
@@ -18,8 +18,8 @@ export function useProducts() {
       }
     };
 
-    fetchData();
+    fetchProducts();
   }, []);
 
-  return { data, isLoading, error };
+  return { data, isLoading, error, refetch: fetchProducts };
 }
